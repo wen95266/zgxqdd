@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { BoardState, Color, Move, PieceType, Position, User } from '../types';
-import { INITIAL_BOARD, TURN_TIME_LIMIT } from '../constants';
+import { INITIAL_BOARD, TURN_TIME_LIMIT, PIECE_CHARS } from '../constants';
 import { Board } from './Board';
 import { getValidMoves, willBeChecked, isKingInDanger, hasLegalMoves, evaluateMaterial } from '../utils/gameLogic';
 import { getAiMove } from '../services/geminiService';
 import { getTopMoves, getMoveName, AIDifficulty } from '../utils/engine';
+import { getBookSuggestions } from '../utils/openingBook';
 import { soundManager } from '../utils/sound';
 import { RulesModal } from './RulesModal';
 import confetti from 'canvas-confetti';
 import { 
   Volume2, VolumeX, RotateCw, Lightbulb, Undo2, Flag, Handshake, 
-  BookOpen, ChevronLeft, History, Trophy, Sparkles, Brain, Swords, Shield, X, AlertTriangle
+  BookOpen, ChevronLeft, History, Trophy, Sparkles, Brain, Swords, Shield, X, AlertTriangle, Compass
 } from 'lucide-react';
 
 interface Props {
@@ -42,6 +43,12 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
   const [moveHistory, setMoveHistory] = useState<{ notation: string, color: Color }[]>([]);
   const [noCaptureSteps, setNoCaptureSteps] = useState<number>(0);
 
+  // Tactical Enhancements: 吃子战损、定式识别与悔棋快照
+  const [redCaptured, setRedCaptured] = useState<PieceType[]>([]); // 红方吃掉的黑子
+  const [blackCaptured, setBlackCaptured] = useState<PieceType[]>([]); // 黑方吃掉的红子
+  const [capturedHistory, setCapturedHistory] = useState<{ red: PieceType[], black: PieceType[] }[]>([]);
+  const [currentOpening, setCurrentOpening] = useState<string>('');
+
   // Modals & Panels
   const [isRulesOpen, setIsRulesOpen] = useState<boolean>(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
@@ -51,6 +58,21 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
 
   // @ts-ignore
   const WebApp = window.Telegram?.WebApp;
+
+  // 移动端音频自动解锁 (响应首次手势，防止 iOS/Android 静音策略拦截)
+  useEffect(() => {
+    const unlockAudio = () => {
+      soundManager.playMove();
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, []);
 
   // Haptic feedback helper
   const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success' | 'error') => {
@@ -200,6 +222,13 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
     if (winner || isAiThinking || isInitializing) return;
     if (mode === 'pve' && turn !== Color.RED) return;
 
+    // 点击空白处或取消标记
+    if (pos.x < 0 || pos.y < 0) {
+      setSelectedPos(null);
+      setValidMoves([]);
+      return;
+    }
+
     const piece = board[pos.y][pos.x];
     
     if (selectedPos && selectedPos.x === pos.x && selectedPos.y === pos.y) {
@@ -215,6 +244,9 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
       const legalMoves = rawMoves.filter(to => !willBeChecked(board, { from: pos, to }, turn));
       setValidMoves(legalMoves);
       triggerHaptic('light');
+    } else if (selectedPos) {
+      setSelectedPos(null);
+      setValidMoves([]);
     }
   };
 
@@ -223,6 +255,13 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
     setHistoryStack(prev => {
       const copy = board.map(row => row.map(p => p ? {...p} : null));
       const next = [...prev, copy];
+      if (next.length > 40) next.shift();
+      return next;
+    });
+
+    // 保存吃子快照以供悔棋回滚
+    setCapturedHistory(prev => {
+      const next = [...prev, { red: [...redCaptured], black: [...blackCaptured] }];
       if (next.length > 40) next.shift();
       return next;
     });
@@ -245,11 +284,16 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
     setLastMove(move);
     setTimeLeft(TURN_TIME_LIMIT);
 
-    // 60-Move Rule counter
+    // 60-Move Rule counter & Captured piece tracking
     if (targetPiece) {
       setNoCaptureSteps(0);
       soundManager.playCapture();
       triggerHaptic('medium');
+      if (targetPiece.color === Color.BLACK) {
+        setRedCaptured(prev => [...prev, targetPiece.type]);
+      } else {
+        setBlackCaptured(prev => [...prev, targetPiece.type]);
+      }
     } else {
       setNoCaptureSteps(prev => prev + 1);
       soundManager.playMove();
@@ -258,8 +302,16 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
 
     setMoveHistory(prev => [...prev, { notation, color: sourcePiece.color }]);
 
-    // Check if move puts enemy King in check or checkmate
+    // 开局定式智能识别 (前10步)
     const nextTurn = sourcePiece.color === Color.RED ? Color.BLACK : Color.RED;
+    if (moveHistory.length < 12) {
+      const suggestions = getBookSuggestions(newBoard, nextTurn);
+      if (suggestions && suggestions.length > 0) {
+        setCurrentOpening(suggestions[0].name);
+      }
+    }
+
+    // Check if move puts enemy King in check or checkmate
     const enemyInCheck = isKingInDanger(newBoard, nextTurn);
     const enemyHasMoves = hasLegalMoves(newBoard, nextTurn);
 
@@ -290,22 +342,31 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
     }
 
     setTurn(nextTurn);
-  }, [board, noCaptureSteps]);
+  }, [board, noCaptureSteps, redCaptured, blackCaptured, moveHistory.length]);
 
   // Undo (悔棋)
   const handleUndo = () => {
-    if (mode !== 'pve' || turn !== Color.RED || winner) return;
+    if (mode !== 'pve' || turn !== Color.RED || winner || isAiThinking) return;
     if (historyStack.length < 2) {
       if (WebApp?.showAlert) WebApp.showAlert("无法悔棋 (开局或步数不足)");
       else alert("无法悔棋 (开局或步数不足)");
       return;
     }
 
-    // Go back 2 steps (player + AI)
+    // 回退2步 (玩家与AI各退一步)
     const targetBoard = historyStack[historyStack.length - 2];
     setBoard(targetBoard);
     setHistoryStack(prev => prev.slice(0, prev.length - 2));
     setMoveHistory(prev => prev.slice(0, prev.length - 2));
+
+    // 回滚战损吃子快照
+    if (capturedHistory.length >= 2) {
+      const snapshot = capturedHistory[capturedHistory.length - 2];
+      setRedCaptured([...snapshot.red]);
+      setBlackCaptured([...snapshot.black]);
+      setCapturedHistory(prev => prev.slice(0, prev.length - 2));
+    }
+
     setTurn(Color.RED);
     setWinner(null);
     setSelectedPos(null);
@@ -325,20 +386,22 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
     }
   };
 
-  // Offer Draw
+  // Offer Draw (和棋提议)
   const handleDraw = () => {
     if (winner) return;
     if (mode === 'pve') {
-      if (noCaptureSteps > 40) {
-        handleGameEnd('Draw', "局势焦灼，双方握手言和");
+      if (noCaptureSteps > 30 || moveHistory.length >= 30) {
+        handleGameEnd('Draw', "双方棋逢对手，握手言和");
       } else {
-        const msg = "AI: 棋局战意正浓，未满20回合不准求和！";
+        const msg = "AI: 棋局战意正浓，未满15回合不准求和！";
         if (WebApp?.showAlert) WebApp.showAlert(msg);
         else alert(msg);
       }
     } else {
-      if (WebApp?.showAlert) WebApp.showAlert("已向对手发送求和请求。");
-      else alert("已向对手发送求和请求。");
+      const agree = window.confirm("双方是否同意握手言和？");
+      if (agree) {
+        handleGameEnd('Draw', "双方达成共识，握手言和");
+      }
     }
   };
 
@@ -396,6 +459,10 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
     setLastMove(null);
     setHistoryStack([]);
     setMoveHistory([]);
+    setCapturedHistory([]);
+    setRedCaptured([]);
+    setBlackCaptured([]);
+    setCurrentOpening('');
     setNoCaptureSteps(0);
     setTimeLeft(TURN_TIME_LIMIT);
   };
@@ -434,9 +501,16 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
               </span>
             )}
           </div>
-          <span className="text-[10px] opacity-75 font-mono">
-            {moveHistory.length > 0 ? `第 ${Math.ceil(moveHistory.length / 2)} 回合` : '序盘对决'}
-          </span>
+          {currentOpening ? (
+            <div className="flex items-center gap-1 text-[10px] text-amber-200 font-medium">
+              <Compass className="w-3 h-3 text-amber-300 animate-spin" />
+              <span>{currentOpening}</span>
+            </div>
+          ) : (
+            <span className="text-[10px] opacity-75 font-mono">
+              {moveHistory.length > 0 ? `第 ${Math.ceil(moveHistory.length / 2)} 回合` : '序盘对决'}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -469,49 +543,73 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
         {/* Dual Players Dashboard */}
         <div className="grid grid-cols-2 gap-2 bg-[#e3c08d]/90 p-2.5 rounded-2xl border-2 border-[#5c4033]/40 shadow-inner">
           {/* Black Player / AI */}
-          <div className={`flex items-center justify-between p-2 rounded-xl transition-all ${
+          <div className={`flex flex-col justify-between p-2 rounded-xl transition-all ${
             turn === Color.BLACK ? 'bg-[#5c4033] text-[#f0dbb0] shadow-md scale-[1.02]' : 'bg-[#fcf5e5]/80 text-[#5c4033]'
           }`}>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-stone-900 border-2 border-stone-600 flex items-center justify-center font-black text-white text-xs shadow">
-                将
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-stone-900 border-2 border-stone-600 flex items-center justify-center font-black text-white text-xs shadow">
+                  将
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-xs">{mode === 'pve' ? '特级大师 AI' : '黑方对手'}</span>
+                  <span className="text-[10px] opacity-75 font-mono">战力: {blackMaterial}</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-xs">{mode === 'pve' ? '特级大师 AI' : '黑方对手'}</span>
-                <span className="text-[10px] opacity-75 font-mono">战力: {blackMaterial}</span>
-              </div>
+              {turn === Color.BLACK && !winner && (
+                <div className="text-right">
+                  {isAiThinking ? (
+                    <span className="text-[10px] font-bold text-amber-300 animate-pulse">弈算中...</span>
+                  ) : (
+                    <span className={`text-xs font-mono font-bold ${timeLeft < 15 ? 'text-red-400 animate-ping' : ''}`}>
+                      {timeLeft}s
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-            {turn === Color.BLACK && !winner && (
-              <div className="text-right">
-                {isAiThinking ? (
-                  <span className="text-[10px] font-bold text-amber-300 animate-pulse">弈算中...</span>
-                ) : (
-                  <span className={`text-xs font-mono font-bold ${timeLeft < 15 ? 'text-red-400 animate-ping' : ''}`}>
-                    {timeLeft}s
+            {/* 黑方吃掉的红子 */}
+            {blackCaptured.length > 0 && (
+              <div className="flex flex-wrap gap-0.5 mt-1.5 pt-1 border-t border-black/10">
+                {blackCaptured.map((t, idx) => (
+                  <span key={idx} className="w-4 h-4 rounded-full bg-[#8B0000] text-[#f0dbb0] border border-amber-300/40 text-[9px] font-bold flex items-center justify-center shadow-xs">
+                    {PIECE_CHARS[t][0]}
                   </span>
-                )}
+                ))}
               </div>
             )}
           </div>
 
           {/* Red Player (User) */}
-          <div className={`flex items-center justify-between p-2 rounded-xl transition-all ${
+          <div className={`flex flex-col justify-between p-2 rounded-xl transition-all ${
             turn === Color.RED ? 'bg-[#8B0000] text-[#f0dbb0] shadow-md scale-[1.02]' : 'bg-[#fcf5e5]/80 text-[#5c4033]'
           }`}>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#8B0000] border-2 border-amber-300 flex items-center justify-center font-black text-[#f0dbb0] text-xs shadow">
-                帅
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#8B0000] border-2 border-amber-300 flex items-center justify-center font-black text-[#f0dbb0] text-xs shadow">
+                  帅
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-xs">{user?.username || '执红棋士'}</span>
+                  <span className="text-[10px] opacity-75 font-mono">战力: {redMaterial}</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-xs">{user?.username || '执红棋士'}</span>
-                <span className="text-[10px] opacity-75 font-mono">战力: {redMaterial}</span>
-              </div>
+              {turn === Color.RED && !winner && (
+                <div className="text-right">
+                  <span className={`text-xs font-mono font-bold ${timeLeft < 15 ? 'text-amber-200 animate-ping' : ''}`}>
+                    {timeLeft}s
+                  </span>
+                </div>
+              )}
             </div>
-            {turn === Color.RED && !winner && (
-              <div className="text-right">
-                <span className={`text-xs font-mono font-bold ${timeLeft < 15 ? 'text-amber-200 animate-ping' : ''}`}>
-                  {timeLeft}s
-                </span>
+            {/* 红方吃掉的黑子 */}
+            {redCaptured.length > 0 && (
+              <div className="flex flex-wrap gap-0.5 mt-1.5 pt-1 border-t border-black/10">
+                {redCaptured.map((t, idx) => (
+                  <span key={idx} className="w-4 h-4 rounded-full bg-stone-900 text-white border border-stone-600 text-[9px] font-bold flex items-center justify-center shadow-xs">
+                    {PIECE_CHARS[t][1]}
+                  </span>
+                ))}
               </div>
             )}
           </div>
@@ -537,7 +635,7 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
       <div className="w-full max-w-[480px] px-3 pt-2 grid grid-cols-5 gap-1.5">
         <button
           onClick={handleUndo}
-          disabled={mode !== 'pve' || turn !== Color.RED || historyStack.length < 2 || !!winner}
+          disabled={mode !== 'pve' || turn !== Color.RED || historyStack.length < 2 || !!winner || isAiThinking}
           className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition disabled:opacity-40"
         >
           <Undo2 className="w-4 h-4 mb-0.5 text-[#8B0000]" />
@@ -546,7 +644,7 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
 
         <button
           onClick={handleRequestAdvisor}
-          disabled={turn !== Color.RED || !!winner}
+          disabled={turn !== Color.RED || !!winner || isAiThinking}
           className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition disabled:opacity-40"
         >
           <Lightbulb className="w-4 h-4 mb-0.5 text-amber-600" />

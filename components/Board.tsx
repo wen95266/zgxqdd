@@ -14,6 +14,37 @@ interface Props {
   isFlipped?: boolean;
 }
 
+// Helper to draw Chinese Chess star corner bracket marks
+const StarMark: React.FC<{ cx: number; cy: number; left?: boolean; right?: boolean }> = ({ 
+  cx, 
+  cy, 
+  left = true, 
+  right = true 
+}) => {
+  const d = 1.2;
+  const len = 1.6;
+  return (
+    <g stroke="#5c4033" strokeWidth="0.4" fill="none" opacity="0.8">
+      {left && (
+        <>
+          {/* Top-Left */}
+          <path d={`M ${cx - d - len} ${cy - d} L ${cx - d} ${cy - d} L ${cx - d} ${cy - d - len}`} />
+          {/* Bottom-Left */}
+          <path d={`M ${cx - d - len} ${cy + d} L ${cx - d} ${cy + d} L ${cx - d} ${cy + d + len}`} />
+        </>
+      )}
+      {right && (
+        <>
+          {/* Top-Right */}
+          <path d={`M ${cx + d + len} ${cy - d} L ${cx + d} ${cy - d} L ${cx + d} ${cy - d - len}`} />
+          {/* Bottom-Right */}
+          <path d={`M ${cx + d + len} ${cy + d} L ${cx + d} ${cy + d} L ${cx + d} ${cy + d + len}`} />
+        </>
+      )}
+    </g>
+  );
+};
+
 export const Board: React.FC<Props> = ({ 
   board, 
   selectedPos, 
@@ -37,29 +68,30 @@ export const Board: React.FC<Props> = ({
     const piece = board[boardY][boardX];
     if (piece && piece.color === turn) {
       onSelect({ x: boardX, y: boardY });
+    } else if (selectedPos) {
+      // 点击空白处或非己方棋子取消选择
+      onSelect({ x: -1, y: -1 });
     }
   };
 
-  // Convert logical coordinates to visual coordinates based on isFlipped
-  const toVisual = (x: number, y: number): { vx: number, vy: number } => {
-    return {
-      vx: isFlipped ? 8 - x : x,
-      vy: isFlipped ? 9 - y : y
-    };
-  };
+  // 棋盘路数刻度 (正常红方视角：黑方顶端1-9，红方底端九-一)
+  const redCols = isFlipped ? ['一', '二', '三', '四', '五', '六', '七', '八', '九'] : ['九', '八', '七', '六', '五', '四', '三', '二', '一'];
+  const blackCols = isFlipped ? ['9', '8', '7', '6', '5', '4', '3', '2', '1'] : ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
   return (
     <div className="relative w-full aspect-[9/10] max-w-[480px] mx-auto wood-texture shadow-2xl rounded-2xl border-4 border-[#5c4033] p-1.5 select-none touch-manipulation">
-       {/* Background Grid Lines via SVG */}
+       {/* Background Grid Lines & Authentic Ornaments via SVG */}
        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 90 100">
-          <rect x="5" y="5" width="80" height="90" fill="none" stroke="#5c4033" strokeWidth="1" />
+          {/* 外边框 */}
+          <rect x="5" y="5" width="80" height="90" fill="none" stroke="#5c4033" strokeWidth="1.2" />
+          <rect x="4.2" y="4.2" width="81.6" height="91.6" fill="none" stroke="#5c4033" strokeWidth="0.4" opacity="0.6" />
 
-          {/* Horizontal Lines */}
+          {/* 横线 (Horizontal Lines) */}
           {Array.from({ length: 8 }).map((_, i) => (
              <line key={`h-${i}`} x1="5" y1={15 + i * 10} x2="85" y2={15 + i * 10} stroke="#5c4033" strokeWidth="0.5" />
           ))}
 
-          {/* Vertical Lines (Split across River between Y=45 and Y=55) */}
+          {/* 竖线 (Vertical Lines，楚河汉界处断开) */}
           {Array.from({ length: 7 }).map((_, i) => (
              <React.Fragment key={`v-${i}`}>
                 <line x1={15 + i * 10} y1="5" x2={15 + i * 10} y2="45" stroke="#5c4033" strokeWidth="0.5" />
@@ -67,39 +99,94 @@ export const Board: React.FC<Props> = ({
              </React.Fragment>
           ))}
 
-          {/* Palaces (Diagonal X lines) */}
+          {/* 九宫斜线 (Palace Diagonal X lines) */}
           <line x1="35" y1="5" x2="55" y2="25" stroke="#5c4033" strokeWidth="0.5" />
           <line x1="55" y1="5" x2="35" y2="25" stroke="#5c4033" strokeWidth="0.5" />
           <line x1="35" y1="75" x2="55" y2="95" stroke="#5c4033" strokeWidth="0.5" />
           <line x1="55" y1="75" x2="35" y2="95" stroke="#5c4033" strokeWidth="0.5" />
 
-          {/* Traditional Calligraphy in River */}
+          {/* 传统炮位与兵位十字星折角标 (Star Corner Marks) */}
+          {/* 黑方炮位 */}
+          <StarMark cx={15} cy={25} />
+          <StarMark cx={75} cy={25} />
+          {/* 黑方卒位 */}
+          <StarMark cx={5} cy={35} left={false} right={true} />
+          <StarMark cx={25} cy={35} />
+          <StarMark cx={45} cy={35} />
+          <StarMark cx={65} cy={35} />
+          <StarMark cx={85} cy={35} left={true} right={false} />
+
+          {/* 红方兵位 */}
+          <StarMark cx={5} cy={65} left={false} right={true} />
+          <StarMark cx={25} cy={65} />
+          <StarMark cx={45} cy={65} />
+          <StarMark cx={65} cy={65} />
+          <StarMark cx={85} cy={65} left={true} right={false} />
+          {/* 红方炮位 */}
+          <StarMark cx={15} cy={75} />
+          <StarMark cx={75} cy={75} />
+
+          {/* 楚河汉界传统端庄书法 */}
           <text 
             x={isFlipped ? "65" : "25"} 
-            y="52" 
-            fontSize="4.5" 
+            y="51.8" 
+            fontSize="4.2" 
             fontWeight="bold"
             fontFamily="serif"
             fill="#5c4033" 
             opacity="0.85"
             textAnchor="middle" 
-            letterSpacing="2"
+            letterSpacing="2.5"
           >
             楚 河
           </text>
           <text 
             x={isFlipped ? "25" : "65"} 
-            y="52" 
-            fontSize="4.5" 
+            y="51.8" 
+            fontSize="4.2" 
             fontWeight="bold"
             fontFamily="serif"
             fill="#5c4033" 
             opacity="0.85"
             textAnchor="middle" 
-            letterSpacing="2"
+            letterSpacing="2.5"
           >
             漢 界
           </text>
+
+          {/* 顶端路数刻度 (1-9) */}
+          {blackCols.map((c, idx) => (
+            <text
+              key={`top-col-${idx}`}
+              x={5 + idx * 10}
+              y="2.8"
+              fontSize="2.4"
+              fontWeight="bold"
+              fontFamily="monospace"
+              fill="#5c4033"
+              opacity="0.6"
+              textAnchor="middle"
+            >
+              {c}
+            </text>
+          ))}
+
+          {/* 底端路数刻度 (九-一) */}
+          {redCols.map((c, idx) => (
+            <text
+              key={`bot-col-${idx}`}
+              x={5 + idx * 10}
+              y="98.5"
+              fontSize="2.4"
+              fontWeight="bold"
+              fontFamily="serif"
+              fill="#5c4033"
+              opacity="0.6"
+              textAnchor="middle"
+            >
+              {c}
+            </text>
+          ))}
        </svg>
 
        {/* Pieces & Interaction Layer */}

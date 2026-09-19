@@ -301,19 +301,23 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
                 }
             } 
             else if (p.type === PieceType.CANNON) {
-                // 中炮
+                // 镇中路当头炮
                 if (x === 4) {
                     tacticalBonus += 35;
-                    // 检测空头炮 (中路炮前无子直接照准九宫将门)
+                }
+                // 检测对准敌方老将的空头炮或沉底炮 (直逼将门)
+                const enemyKing = isRed ? blackKingPos : redKingPos;
+                if (x === enemyKing.x) {
                     let screenCount = 0;
-                    const enemyKingY = isRed ? blackKingPos.y : redKingPos.y;
-                    const startY = Math.min(y, enemyKingY) + 1;
-                    const endY = Math.max(y, enemyKingY);
+                    const startY = Math.min(y, enemyKing.y) + 1;
+                    const endY = Math.max(y, enemyKing.y);
                     for (let cy = startY; cy < endY; cy++) {
-                        if (board[cy][4]) screenCount++;
+                        if (board[cy][x]) screenCount++;
                     }
                     if (screenCount === 0) {
-                        tacticalBonus += 220; // 致命空头炮！
+                        tacticalBonus += 240; // 致命空头炮，将门完全敞开！
+                    } else if (screenCount === 1) {
+                        tacticalBonus += 45; // 隔单子借炮瞄将
                     }
                 }
             }
@@ -495,7 +499,8 @@ const alphaBeta = (
 
     const moves = getAllLegalMoves(board, turn, ttEntry?.bestMove, ply);
     if (moves.length === 0) {
-        return inCheck ? (-MATE_SCORE + ply) : 0; // 被将死负分，困毙判和
+        // 中国象棋规则：无合法走步即为困毙或绝杀，走棋方直接判负
+        return -MATE_SCORE + ply;
     }
 
     let flag: 0 | 1 | 2 = 2; // 默认 UPPERBOUND
@@ -561,7 +566,7 @@ const analyzeTactic = (board: BoardState, move: Move, score: number): string => 
     return score > 200 ? "特大优势推进，步步紧逼" : "沉稳布阵，防守固若金汤";
 };
 
-// ================= 中文标准记谱法 (如 "炮二平五", "马8进7") =================
+// ================= 中文标准记谱法 (如 "炮二平五", "前炮平五", "马8进7") =================
 export const getMoveName = (board: BoardState, move: Move): string => {
     const p = board[move.from.y][move.from.x];
     if (!p) return "";
@@ -574,7 +579,30 @@ export const getMoveName = (board: BoardState, move: Move): string => {
     const fromColIdx = getCol(move.from.x, p.color);
     const toColIdx = getCol(move.to.x, p.color);
     const pieceChar = isRed ? PIECE_CHARS[p.type][0] : PIECE_CHARS[p.type][1];
-    const fromStr = isRed ? colName[fromColIdx] : numName[fromColIdx];
+    
+    // 检查同列是否有两个相同的棋子 (如双车、双炮、双兵/卒同列)
+    let hasSamePieceInCol = false;
+    let isFrontPiece = false;
+    for (let checkY = 0; checkY < ROWS; checkY++) {
+        if (checkY !== move.from.y) {
+            const otherP = board[checkY][move.from.x];
+            if (otherP && otherP.type === p.type && otherP.color === p.color) {
+                hasSamePieceInCol = true;
+                // 红棋 y 较小为前，黑棋 y 较大为前
+                isFrontPiece = isRed ? (move.from.y < checkY) : (move.from.y > checkY);
+                break;
+            }
+        }
+    }
+
+    let fromStr = "";
+    if (hasSamePieceInCol) {
+        // 同列双子，使用 "前车" / "后车" 格式
+        fromStr = isFrontPiece ? "前" : "后";
+    } else {
+        fromStr = isRed ? colName[fromColIdx] : numName[fromColIdx];
+    }
+
     let dirStr = "";
     let destStr = "";
     const dy = isRed ? (move.from.y - move.to.y) : (move.to.y - move.from.y);
@@ -587,6 +615,10 @@ export const getMoveName = (board: BoardState, move: Move): string => {
          destStr = isRed ? colName[toColIdx] : numName[toColIdx];
     } else {
          destStr = isRed ? colName[absDy] : numName[absDy];
+    }
+
+    if (hasSamePieceInCol) {
+        return `${fromStr}${pieceChar}${dirStr}${destStr}`;
     }
     return `${pieceChar}${fromStr}${dirStr}${destStr}`;
 };
