@@ -222,21 +222,42 @@ export const getValidMoves = (board: BoardState, from: Position): Position[] => 
 
 // 检查老将是否被攻击 (将军)
 export const isKingInDanger = (board: BoardState, color: Color): boolean => {
-    // 1. 寻找老将位置
+    // 1. 寻找双方老将位置
     let kx = -1, ky = -1;
+    let enemyKx = -1, enemyKy = -1;
+    const enemyColor = color === Color.RED ? Color.BLACK : Color.RED;
+
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
             const p = board[y][x];
-            if (p && p.type === PieceType.GENERAL && p.color === color) {
-                kx = x; ky = y; break;
+            if (p && p.type === PieceType.GENERAL) {
+                if (p.color === color) {
+                    kx = x; ky = y;
+                } else {
+                    enemyKx = x; enemyKy = y;
+                }
             }
         }
-        if (kx !== -1) break;
     }
     if (kx === -1) return true; // 老将已被吃，处于必死态
 
+    // 老将照面检测 (两将同列无阻隔视为将对脸/照面杀)
+    if (enemyKx !== -1 && kx === enemyKx) {
+        let hasObstacle = false;
+        const minY = Math.min(ky, enemyKy);
+        const maxY = Math.max(ky, enemyKy);
+        for (let y = minY + 1; y < maxY; y++) {
+            if (board[y][kx]) {
+                hasObstacle = true;
+                break;
+            }
+        }
+        if (!hasObstacle) {
+            return true;
+        }
+    }
+
     // 2. 遍历对方所有棋子，看能否攻击到老将
-    const enemyColor = color === Color.RED ? Color.BLACK : Color.RED;
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
             const p = board[y][x];

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { calculatePlayerLevel } from '../utils/gameLogic';
-import { X, Users, Share2, Copy, Check, Swords, Shield, Trophy } from 'lucide-react';
+import { soundManager } from '../utils/sound';
+import { X, Users, Share2, Copy, Check, Swords, Shield, Trophy, LogIn } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -11,14 +12,17 @@ interface Props {
   onEnterGameRoom: (gameId: string) => void;
 }
 
+type TabMode = 'create' | 'join';
 type RestrictionMode = 'any' | 'ranked';
 
 export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUrl, onEnterGameRoom }) => {
+  const [activeTab, setActiveTab] = useState<TabMode>('create');
   const [step, setStep] = useState<'config' | 'invite'>('config');
   const [restriction, setRestriction] = useState<RestrictionMode>('any');
   const [minLevel, setMinLevel] = useState<number>(user ? calculatePlayerLevel(user.points || 0) : 0);
   const [stakePoints, setStakePoints] = useState<number>(30);
   
+  const [inputRoomId, setInputRoomId] = useState<string>('');
   const [createdGameId, setCreatedGameId] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
@@ -38,6 +42,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
   const handleCreatePvP = async () => {
       if (isCreatingGame || !user) return;
       setIsCreatingGame(true);
+      soundManager.playClick();
 
       const targetMinLevel = restriction === 'any' ? 0 : minLevel;
 
@@ -53,7 +58,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
           });
           
           const data = await res.json();
-          if (data.success && data.game_id) {
+          if (data && data.success && data.game_id) {
               const link = `${botAppUrl}?startapp=game_${data.game_id}`;
               setCreatedGameId(data.game_id);
               setInviteLink(link);
@@ -78,7 +83,29 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
       }
   };
 
+  const handleJoinByInput = () => {
+    const trimmed = inputRoomId.trim();
+    if (!trimmed) {
+      safeAlert("请输入有效的房间号或邀请链接");
+      return;
+    }
+
+    soundManager.playClick();
+    let targetId = trimmed;
+    // If user pasted a full link with game_xxx
+    if (targetId.includes('game_')) {
+      const match = targetId.match(/game_([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        targetId = match[1];
+      }
+    }
+
+    onEnterGameRoom(targetId);
+    resetAndClose();
+  };
+
   const handleShareInvite = () => {
+      soundManager.playClick();
       if (!inviteLink) return;
       
       let text = "⚔️ 楚河汉界，智者对弈！点击链接加入我的中国象棋对局：";
@@ -96,6 +123,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
   };
 
   const handleCopy = () => {
+      soundManager.playClick();
       if (!inviteLink) return;
       navigator.clipboard.writeText(inviteLink).then(() => {
           setCopied(true);
@@ -106,6 +134,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
   };
 
   const handleStartWaiting = () => {
+      soundManager.playClick();
       if (createdGameId) {
           onEnterGameRoom(createdGameId);
           resetAndClose();
@@ -116,6 +145,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
       setInviteLink(null);
       setCreatedGameId(null);
       setStep('config');
+      setInputRoomId('');
       setIsCreatingGame(false);
       setRestriction('any');
       onClose();
@@ -133,21 +163,65 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center justify-center space-x-2 border-b-2 border-[#5c4033]/30 pb-3 mb-4">
-                <Swords className="w-6 h-6 text-[#8B0000]" />
-                <h2 className="text-2xl font-black text-[#5c4033] tracking-wide">
-                  {step === 'config' ? '摆设棋局' : '邀请好友入局'}
-                </h2>
+            {/* Mode Switch Tabs */}
+            <div className="flex border-b-2 border-[#5c4033]/30 pb-3 mb-4 gap-2">
+              <button
+                onClick={() => { soundManager.playClick(); setActiveTab('create'); }}
+                className={`flex-1 py-1.5 rounded-xl font-black text-sm flex items-center justify-center gap-1.5 transition ${
+                  activeTab === 'create'
+                    ? 'bg-[#8B0000] text-[#f0dbb0] shadow'
+                    : 'bg-[#fcf5e5] text-[#5c4033] hover:bg-[#e3c08d]'
+                }`}
+              >
+                <Swords className="w-4 h-4" />
+                <span>开辟棋局</span>
+              </button>
+
+              <button
+                onClick={() => { soundManager.playClick(); setActiveTab('join'); }}
+                className={`flex-1 py-1.5 rounded-xl font-black text-sm flex items-center justify-center gap-1.5 transition ${
+                  activeTab === 'join'
+                    ? 'bg-[#8B0000] text-[#f0dbb0] shadow'
+                    : 'bg-[#fcf5e5] text-[#5c4033] hover:bg-[#e3c08d]'
+                }`}
+              >
+                <LogIn className="w-4 h-4" />
+                <span>加入房间</span>
+              </button>
             </div>
 
-            {step === 'config' ? (
+            {activeTab === 'join' ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-[#5c4033] block mb-1.5">输入房间号或邀请链接</label>
+                  <input
+                    type="text"
+                    value={inputRoomId}
+                    onChange={(e) => setInputRoomId(e.target.value)}
+                    placeholder="例如: room_abc123 或粘贴分享链接"
+                    className="w-full px-3 py-2.5 bg-[#fcf5e5] border-2 border-[#5c4033]/40 rounded-xl text-xs font-mono text-[#5c4033] focus:outline-hidden focus:border-[#8B0000]"
+                  />
+                  <p className="text-[10px] text-[#5c4033]/70 mt-1">
+                    从 Telegram 微信群或好友处获得对战房间号直接进入
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleJoinByInput}
+                  className="w-full py-3 bg-[#8B0000] hover:bg-[#6b0000] text-[#f0dbb0] font-black rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>立即入局对战</span>
+                </button>
+              </div>
+            ) : step === 'config' ? (
                 <div className="space-y-4">
                     <div>
                         <label className="text-xs font-bold text-[#5c4033] block mb-1.5">入场门槛限制</label>
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 type="button"
-                                onClick={() => setRestriction('any')}
+                                onClick={() => { soundManager.playClick(); setRestriction('any'); }}
                                 className={`py-2 px-3 rounded-xl border text-center transition text-xs font-bold ${
                                     restriction === 'any'
                                         ? 'bg-[#8B0000] text-[#f0dbb0] border-[#8B0000] shadow'
@@ -158,7 +232,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setRestriction('ranked')}
+                                onClick={() => { soundManager.playClick(); setRestriction('ranked'); }}
                                 className={`py-2 px-3 rounded-xl border text-center transition text-xs font-bold ${
                                     restriction === 'ranked'
                                         ? 'bg-[#8B0000] text-[#f0dbb0] border-[#8B0000] shadow'
@@ -194,7 +268,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
                                 <button
                                     key={points}
                                     type="button"
-                                    onClick={() => setStakePoints(points)}
+                                    onClick={() => { soundManager.playClick(); setStakePoints(points); }}
                                     className={`py-2 px-2 rounded-xl border text-center transition text-xs font-bold ${
                                         stakePoints === points
                                             ? 'bg-[#8B0000] text-[#f0dbb0] border-[#8B0000] shadow'

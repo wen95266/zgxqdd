@@ -7,11 +7,12 @@ import { getAiMove } from '../services/geminiService';
 import { getTopMoves, getMoveName, AIDifficulty } from '../utils/engine';
 import { getBookSuggestions } from '../utils/openingBook';
 import { soundManager } from '../utils/sound';
+import { recordMatchOutcome } from '../utils/userStorage';
 import { RulesModal } from './RulesModal';
 import confetti from 'canvas-confetti';
 import { 
   Volume2, VolumeX, RotateCw, Lightbulb, Undo2, Flag, Handshake, 
-  BookOpen, ChevronLeft, History, Trophy, Sparkles, Brain, Swords, Shield, X, AlertTriangle, Compass
+  BookOpen, ChevronLeft, History, Trophy, Sparkles, Brain, Swords, Shield, X, AlertTriangle, Compass, Coins
 } from 'lucide-react';
 
 interface Props {
@@ -19,15 +20,17 @@ interface Props {
   onBack: () => void;
   invitedGameId?: string | null;
   user: User | null;
+  onUpdateUser?: (u: User) => void;
 }
 
-export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => {
+export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpdateUser }) => {
   const [board, setBoard] = useState<BoardState>(INITIAL_BOARD);
   const [turn, setTurn] = useState<Color>(Color.RED);
   const [selectedPos, setSelectedPos] = useState<Position | null>(null);
   const [validMoves, setValidMoves] = useState<Position[]>([]);
   const [winner, setWinner] = useState<Color | 'Draw' | null>(null);
   const [resultMessage, setResultMessage] = useState<string>('');
+  const [pointsEarned, setPointsEarned] = useState<number>(0);
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(TURN_TIME_LIMIT);
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
@@ -183,37 +186,48 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
     setWinner(winnerColor);
     setResultMessage(reason);
     
+    let earned = 0;
     if (winnerColor === Color.RED) {
+      earned = aiDifficulty === 'master' ? 50 : 30;
+      setPointsEarned(earned);
       soundManager.playWin();
+      setTimeout(() => soundManager.playCoin(), 600);
       triggerHaptic('success');
       confetti({
         particleCount: 120,
         spread: 80,
         origin: { y: 0.6 }
       });
-    } else if (winnerColor === Color.BLACK) {
+    } else if (winnerColor === 'Draw') {
+      earned = 5;
+      setPointsEarned(5);
+      triggerHaptic('medium');
+    } else {
+      setPointsEarned(0);
       soundManager.playLoss();
       triggerHaptic('error');
     }
 
-    const telegram_id = user?.telegram_id || "dev_user_123";
-    let result = 'loss';
-    if (winnerColor === Color.RED) result = 'win';
-    if (winnerColor === 'Draw') result = 'draw';
+    const outcome = winnerColor === Color.RED ? 'win' : winnerColor === 'Draw' ? 'draw' : 'loss';
+    if (user && onUpdateUser) {
+      const updated = recordMatchOutcome(user, outcome, earned);
+      onUpdateUser(updated);
+    }
 
+    const telegram_id = user?.telegram_id || "dev_user_123";
     if (mode === 'pve') {
       try {
         const res = await fetch('/api/game_result', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ telegram_id, result })
+          body: JSON.stringify({ telegram_id, result: outcome })
         });
         const data = await res.json();
-        if (data.success) {
+        if (data && data.success) {
           setResultMessage(prev => `${reason} (${data.message})`);
         }
       } catch (e) {
-        console.error("Points update offline");
+        // Offline resilience
       }
     }
   };
@@ -614,6 +628,38 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
             )}
           </div>
         </div>
+
+        {/* Material Advantage / Balance of Power Bar */}
+        <div className="bg-[#e3c08d]/60 px-2.5 py-1.5 rounded-xl border border-[#5c4033]/20 flex items-center justify-between gap-2 text-[10px] mt-1.5">
+          <span className="font-bold text-[#8B0000] whitespace-nowrap">
+            红方 {redMaterial}
+          </span>
+          <div className="flex-1 flex flex-col items-center">
+            <div className="w-full bg-stone-800 h-2 rounded-full overflow-hidden border border-[#5c4033]/30 flex">
+              <div 
+                className="bg-red-700 h-full transition-all duration-500 ease-out" 
+                style={{ width: `${Math.min(85, Math.max(15, Math.round((redMaterial / Math.max(1, redMaterial + blackMaterial)) * 100)))}%` }}
+              />
+              <div 
+                className="bg-stone-900 h-full transition-all duration-500 ease-out" 
+                style={{ width: `${100 - Math.min(85, Math.max(15, Math.round((redMaterial / Math.max(1, redMaterial + blackMaterial)) * 100)))}%` }}
+              />
+            </div>
+            <span className="text-[9px] font-bold mt-0.5 text-[#5c4033]/90">
+              {(() => {
+                const diff = redMaterial - blackMaterial;
+                if (diff >= 300) return `红方大优 (+${diff})`;
+                if (diff > 0) return `红方微优 (+${diff})`;
+                if (diff <= -300) return `黑方大优 (${diff})`;
+                if (diff < 0) return `黑方微优 (${diff})`;
+                return '双方兵力均势';
+              })()}
+            </span>
+          </div>
+          <span className="font-bold text-stone-900 whitespace-nowrap">
+            黑方 {blackMaterial}
+          </span>
+        </div>
       </div>
 
       {/* Main Chessboard Component */}
@@ -632,45 +678,60 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
       </main>
 
       {/* Action Command Bar */}
-      <div className="w-full max-w-[480px] px-3 pt-2 grid grid-cols-5 gap-1.5">
+      <div className="w-full max-w-[480px] px-3 pt-2 grid grid-cols-6 gap-1 sm:gap-1.5">
         <button
-          onClick={handleUndo}
+          onClick={() => { soundManager.playClick(); handleUndo(); }}
           disabled={mode !== 'pve' || turn !== Color.RED || historyStack.length < 2 || !!winner || isAiThinking}
           className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition disabled:opacity-40"
+          title="悔棋"
         >
           <Undo2 className="w-4 h-4 mb-0.5 text-[#8B0000]" />
           <span className="text-[10px] font-bold">悔棋</span>
         </button>
 
         <button
-          onClick={handleRequestAdvisor}
+          onClick={() => { soundManager.playClick(); handleRequestAdvisor(); }}
           disabled={turn !== Color.RED || !!winner || isAiThinking}
           className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition disabled:opacity-40"
+          title="军师锦囊"
         >
           <Lightbulb className="w-4 h-4 mb-0.5 text-amber-600" />
-          <span className="text-[10px] font-bold">军师锦囊</span>
+          <span className="text-[10px] font-bold">军师</span>
         </button>
 
         <button
-          onClick={() => setIsFlipped(!isFlipped)}
+          onClick={() => { soundManager.playClick(); setIsFlipped(!isFlipped); }}
           className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition"
+          title="翻转棋盘"
         >
           <RotateCw className="w-4 h-4 mb-0.5 text-[#5c4033]" />
           <span className="text-[10px] font-bold">翻转</span>
         </button>
 
         <button
-          onClick={() => setIsHistoryOpen(true)}
+          onClick={() => { soundManager.playClick(); setIsHistoryOpen(true); }}
           className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition"
+          title="查看棋谱"
         >
           <History className="w-4 h-4 mb-0.5 text-[#5c4033]" />
           <span className="text-[10px] font-bold">棋谱</span>
         </button>
 
         <button
-          onClick={handleSurrender}
-          disabled={!!winner}
+          onClick={() => { soundManager.playClick(); handleDraw(); }}
+          disabled={!!winner || isAiThinking}
+          className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#ebd4a9] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition disabled:opacity-40"
+          title="提议和棋"
+        >
+          <Handshake className="w-4 h-4 mb-0.5 text-amber-700" />
+          <span className="text-[10px] font-bold">求和</span>
+        </button>
+
+        <button
+          onClick={() => { soundManager.playClick(); handleSurrender(); }}
+          disabled={!!winner || isAiThinking}
           className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-red-100 text-red-800 border border-red-300 rounded-xl transition disabled:opacity-40"
+          title="投降认输"
         >
           <Flag className="w-4 h-4 mb-0.5 text-red-700" />
           <span className="text-[10px] font-bold">认输</span>
@@ -825,20 +886,27 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user }) => 
               {winner === Color.RED ? "旗开得胜！" : winner === 'Draw' ? "势均力敌" : "败局已定"}
             </h2>
 
-            <p className="text-sm font-bold text-[#8B0000] mb-4">
+            <p className="text-sm font-bold text-[#8B0000] mb-2">
               {resultMessage || (winner === Color.RED ? "恭喜斩获胜利！" : "再接再厉，棋逢对手！")}
             </p>
 
+            {pointsEarned > 0 && (
+              <div className="mb-4 px-3 py-1 bg-amber-100/90 border border-amber-300 rounded-full inline-flex items-center gap-1.5 text-amber-900 text-xs font-bold shadow-xs">
+                <Coins className="w-3.5 h-3.5 text-amber-600" />
+                <span>结算奖励 +{pointsEarned} 积分已入账</span>
+              </div>
+            )}
+
             <div className="space-y-2">
               <button
-                onClick={handleRestart}
+                onClick={() => { soundManager.playClick(); handleRestart(); }}
                 className="w-full py-3 bg-[#8B0000] hover:bg-[#6b0000] text-[#f0dbb0] font-black rounded-xl shadow-lg transition"
               >
                 重整旗鼓，再战一局
               </button>
 
               <button
-                onClick={onBack}
+                onClick={() => { soundManager.playClick(); onBack(); }}
                 className="w-full py-2.5 bg-[#e3c08d] hover:bg-[#d4b483] text-[#5c4033] font-bold rounded-xl transition"
               >
                 返回游戏大厅

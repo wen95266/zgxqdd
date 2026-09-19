@@ -151,6 +151,54 @@ class SoundManager {
       });
     } catch {}
   }
+
+  // Sparkling coin / reward chime
+  playCoin() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const t = ctx.currentTime;
+      [987.77, 1318.51].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, t + idx * 0.08);
+
+        gain.gain.setValueAtTime(0.3, t + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.08 + 0.35);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(t + idx * 0.08);
+        osc.stop(t + idx * 0.08 + 0.35);
+      });
+    } catch {}
+  }
+
+  // Subtle UI click tap
+  playClick() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, t);
+      osc.frequency.exponentialRampToValueAtTime(200, t + 0.03);
+
+      gain.gain.setValueAtTime(0.15, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(t);
+      osc.stop(t + 0.03);
+    } catch {}
+  }
+
   setMuted(muted: boolean) {
     this.enabled = !muted;
   }

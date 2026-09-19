@@ -2,21 +2,24 @@ import React, { useEffect, useState } from 'react';
 import { User } from '../types';
 import { DEFAULT_TELEGRAM_GROUP_URL, DEFAULT_TELEGRAM_BOT_APP_URL } from '../constants';
 import { calculatePlayerLevel } from '../utils/gameLogic';
+import { getTodayDateString, performLocalSignIn, deductLocalPoints } from '../utils/userStorage';
+import { soundManager } from '../utils/sound';
 import { PaymentModal } from './PaymentModal';
 import { PvPSetupModal } from './PvPSetupModal';
 import { RulesModal } from './RulesModal';
 import { 
-  Bot, Swords, Coins, Award, Sparkles, BookOpen, 
-  Users, Gift, HelpCircle, RefreshCw, Trophy, ShieldCheck
+  Bot, Swords, Coins, Sparkles, BookOpen, 
+  Users, Gift, Trophy, Shield, Flame, CheckCircle2
 } from 'lucide-react';
 
 interface Props {
   onStartGame: (mode: 'pve' | 'pvp', invitedId?: string) => void;
   user: User | null;
   onRefreshUser: () => void;
+  onUpdateUser?: (u: User) => void;
 }
 
-export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => {
+export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser, onUpdateUser }) => {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [showPvPModal, setShowPvPModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -52,9 +55,19 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
       .catch(() => {});
   }, []);
 
+  const todayStr = getTodayDateString();
+  const isAlreadySignedInToday = user?.lastSigninDate === todayStr;
+
   const handleSignIn = async () => {
     if (!user || isSigningIn) return;
+    if (isAlreadySignedInToday) {
+      safeAlert("今日已领取过俸禄，明日再来吧！");
+      return;
+    }
+
     setIsSigningIn(true);
+    soundManager.playClick();
+
     try {
       const res = await fetch('/api/signin', {
         method: 'POST',
@@ -62,20 +75,29 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
         body: JSON.stringify({ telegram_id: user.telegram_id })
       });
       const data = await res.json();
-      if (data.success) {
-        safeAlert(`🎉 ${data.message || '签到成功，获得积分奖励！'}`);
+      if (data && data.success) {
+        soundManager.playCoin();
+        safeAlert(`🎉 ${data.message || '签到成功，获得 100 积分奖励！'}`);
         onRefreshUser();
-      } else {
-        safeAlert(data.message || '今日已签到，明日再来吧！');
+        return;
       }
-    } catch (e) {
-      safeAlert("签到服务暂时不可用");
-    } finally {
-      setIsSigningIn(false);
+    } catch (_) {}
+
+    // Resilient offline fallback
+    const result = performLocalSignIn(user);
+    if (result.success) {
+      soundManager.playCoin();
+      safeAlert(`🎉 ${result.message}`);
+      if (onUpdateUser) onUpdateUser(result.user);
+      else onRefreshUser();
+    } else {
+      safeAlert(result.message);
     }
+    setIsSigningIn(false);
   };
 
   const handleStartPve = async () => {
+    soundManager.playClick();
     if (!user) {
       onStartGame('pve');
       return;
@@ -87,19 +109,27 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
     }
 
     try {
-      await fetch('/api/deduct_points', {
+      fetch('/api/deduct_points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ telegram_id: user.telegram_id, amount: 10 })
-      });
-      onRefreshUser();
+      }).catch(() => {});
     } catch (_) {}
+
+    const updated = deductLocalPoints(user, 10);
+    if (onUpdateUser) onUpdateUser(updated);
 
     onStartGame('pve');
   };
 
   const points = user?.points ?? 0;
   const level = calculatePlayerLevel(points);
+  const wins = user?.wins ?? 0;
+  const losses = user?.losses ?? 0;
+  const draws = user?.draws ?? 0;
+  const totalMatches = wins + losses + draws;
+  const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
+  const streak = user?.streak ?? 0;
 
   const getRankTitle = (lvl: number): string => {
     if (lvl >= 30) return '棋圣九段';
@@ -127,7 +157,7 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowRulesModal(true)}
+            onClick={() => { soundManager.playClick(); setShowRulesModal(true); }}
             className="p-2 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] rounded-full border border-[#5c4033]/30 shadow-sm transition"
             title="查看棋规"
           >
@@ -137,14 +167,14 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
       </header>
 
       {/* User Status Card */}
-      <div className="w-full max-w-md bg-[#e3c08d] border-2 border-[#5c4033]/40 rounded-3xl p-4 shadow-lg mb-5 relative overflow-hidden">
+      <div className="w-full max-w-md bg-[#e3c08d] border-2 border-[#5c4033]/40 rounded-3xl p-4 shadow-lg mb-4 relative overflow-hidden">
         <div className="flex justify-between items-start">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="font-black text-base text-[#5c4033]">
                 {user?.username || '执红棋士'}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#8B0000] text-amber-100 text-[10px] font-bold tracking-wide">
+              <span className="px-2 py-0.5 rounded-full bg-[#8B0000] text-amber-100 text-[10px] font-bold tracking-wide shadow-xs">
                 Lv.{level} {getRankTitle(level)}
               </span>
             </div>
@@ -156,7 +186,7 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
 
           <div className="flex flex-col gap-1.5 items-end">
             <button
-              onClick={() => setShowPaymentModal(true)}
+              onClick={() => { soundManager.playClick(); setShowPaymentModal(true); }}
               className="px-3 py-1.5 bg-[#8B0000] hover:bg-[#6b0000] text-amber-100 font-bold rounded-xl text-xs shadow transition flex items-center gap-1"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -165,12 +195,47 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
 
             <button
               onClick={handleSignIn}
-              disabled={isSigningIn}
-              className="px-3 py-1 bg-[#fcf5e5] hover:bg-[#ebd4a9] text-[#5c4033] font-bold rounded-xl text-[11px] border border-[#5c4033]/30 shadow-sm transition flex items-center gap-1 disabled:opacity-50"
+              disabled={isSigningIn || isAlreadySignedInToday}
+              className={`px-3 py-1 font-bold rounded-xl text-[11px] border border-[#5c4033]/30 shadow-sm transition flex items-center gap-1 ${
+                isAlreadySignedInToday
+                  ? 'bg-stone-300 text-stone-600 opacity-80 cursor-default'
+                  : 'bg-[#fcf5e5] hover:bg-[#ebd4a9] text-[#5c4033]'
+              }`}
             >
-              <Gift className="w-3.5 h-3.5 text-amber-700" />
-              <span>{isSigningIn ? '领取中...' : '每日签到 +100'}</span>
+              {isAlreadySignedInToday ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>今日已签到</span>
+                </>
+              ) : (
+                <>
+                  <Gift className="w-3.5 h-3.5 text-amber-700" />
+                  <span>{isSigningIn ? '领取中...' : '每日俸禄 +100'}</span>
+                </>
+              )}
             </button>
+          </div>
+        </div>
+
+        {/* Combat Stats Bar */}
+        <div className="mt-3 pt-2.5 border-t border-[#5c4033]/20 grid grid-cols-4 gap-2 text-center text-[11px]">
+          <div className="bg-[#fcf5e5]/80 py-1.5 px-1 rounded-xl border border-[#5c4033]/15">
+            <span className="text-[10px] text-[#5c4033]/70 block">总局数</span>
+            <strong className="font-mono font-black text-[#5c4033]">{totalMatches}</strong>
+          </div>
+          <div className="bg-[#fcf5e5]/80 py-1.5 px-1 rounded-xl border border-[#5c4033]/15">
+            <span className="text-[10px] text-[#5c4033]/70 block">胜率</span>
+            <strong className="font-mono font-black text-[#8B0000]">{winRate}%</strong>
+          </div>
+          <div className="bg-[#fcf5e5]/80 py-1.5 px-1 rounded-xl border border-[#5c4033]/15">
+            <span className="text-[10px] text-[#5c4033]/70 block">胜/平/负</span>
+            <span className="font-mono text-[10px] font-bold text-[#5c4033]">{wins}/{draws}/{losses}</span>
+          </div>
+          <div className="bg-[#fcf5e5]/80 py-1.5 px-1 rounded-xl border border-[#5c4033]/15">
+            <span className="text-[10px] text-[#5c4033]/70 block flex items-center justify-center gap-0.5">
+              <Flame className="w-2.5 h-2.5 text-amber-600 inline" /> 连胜
+            </span>
+            <strong className="font-mono font-black text-amber-800">{streak} 连胜</strong>
           </div>
         </div>
       </div>
@@ -194,7 +259,7 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
                 </span>
               </div>
               <p className="text-xs text-[#5c4033]/80 mt-0.5">
-                特级大师引擎 · 军师锦囊 · 实时妙手推荐
+                特级大师引擎 · 军师锦囊 · 胜局奖 30~50 积分
               </p>
             </div>
           </div>
@@ -203,7 +268,7 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
 
         {/* PVP Mode Card */}
         <button
-          onClick={() => setShowPvPModal(true)}
+          onClick={() => { soundManager.playClick(); setShowPvPModal(true); }}
           className="w-full p-4 bg-[#fcf5e5] hover:bg-[#ebd4a9] border-2 border-[#5c4033] rounded-3xl shadow-lg transition transform active:scale-95 flex items-center justify-between text-left group"
         >
           <div className="flex items-center space-x-3.5">
@@ -230,6 +295,7 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
           href={config.groupUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => soundManager.playClick()}
           className="w-full p-3.5 bg-[#e3c08d]/90 hover:bg-[#d4b483] border border-[#5c4033]/40 rounded-2xl shadow transition flex items-center justify-between"
         >
           <div className="flex items-center space-x-3">
@@ -265,3 +331,4 @@ export const Lobby: React.FC<Props> = ({ onStartGame, user, onRefreshUser }) => 
     </div>
   );
 };
+

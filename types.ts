@@ -39,4 +39,10 @@ export interface User {
   telegram_id: string;
   username: string;
   points: number;
+  wins?: number;
+  losses?: number;
+  draws?: number;
+  streak?: number;
+  maxStreak?: number;
+  lastSigninDate?: string;
 }
