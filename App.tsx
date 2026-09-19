@@ -87,7 +87,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#f0dbb0]">
+    <div className="w-full min-h-screen serene-bg text-[#2D2721] flex flex-col items-center">
       {view === 'lobby' && (
         <Lobby 
           onStartGame={handleStartGame} 

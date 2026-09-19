@@ -107,43 +107,43 @@ export const PaymentModal: React.FC<Props> = ({ isOpen, onClose, user, onSuccess
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
-        <div className="bg-[#f0dbb0] border-4 border-[#5c4033] w-full max-w-sm rounded-3xl p-6 relative shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+        <div className="bg-[#FAF7F0] border border-[#D5C7B4] w-full max-w-sm rounded-3xl p-6 relative shadow-2xl">
             <button 
               onClick={onClose} 
-              className="absolute top-4 right-4 p-1.5 hover:bg-[#5c4033]/10 text-[#5c4033] rounded-full transition"
+              className="absolute top-4 right-4 p-1.5 hover:bg-black/5 text-[#5C493A] rounded-full transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
             
-            <div className="flex items-center justify-center space-x-2 border-b-2 border-[#5c4033]/30 pb-3 mb-5">
-                <Coins className="w-7 h-7 text-[#8B0000]" />
-                <h2 className="text-2xl font-black text-[#5c4033] tracking-wide">积分星标充值</h2>
+            <div className="flex items-center justify-center space-x-2 border-b border-[#3D281C]/15 pb-3 mb-5">
+                <Coins className="w-6 h-6 text-[#B93829]" />
+                <h2 className="text-2xl font-black font-serif text-[#2B231C] tracking-wide">积分星标充值</h2>
             </div>
 
             <div className="space-y-4">
-                <div className="bg-[#e3c08d] p-3 rounded-xl border border-[#5c4033]/30 flex justify-between items-center text-sm font-bold text-[#5c4033]">
+                <div className="bg-white p-3 rounded-2xl border border-[#DCD1C0] flex justify-between items-center text-sm font-bold text-[#5C493A] shadow-2xs">
                   <span>当前账户余额</span>
-                  <span className="text-[#8B0000] text-base">{user?.points ?? 0} 积分</span>
+                  <span className="text-[#B93829] font-mono text-base font-black">{user?.points ?? 0} 积分</span>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#5c4033] block mb-2">选择快捷充值包</label>
+                  <label className="text-xs font-bold text-[#5C493A] block mb-2 font-serif">选择快捷充值包</label>
                   <div className="grid grid-cols-3 gap-2">
                     {quickPackages.map(pkg => (
                       <button
                         key={pkg.stars}
                         type="button"
                         onClick={() => setBuyAmount(pkg.stars.toString())}
-                        className={`p-2.5 rounded-xl border text-center transition ${
+                        className={`p-2.5 rounded-2xl border text-center transition cursor-pointer ${
                           buyAmount === pkg.stars.toString()
-                            ? 'bg-[#8B0000] text-[#f0dbb0] border-[#8B0000] shadow-md scale-105'
-                            : 'bg-[#fcf5e5] text-[#5c4033] border-[#5c4033]/40 hover:bg-[#e3c08d]'
+                            ? 'bg-[#B93829] text-white border-[#B93829] shadow-sm scale-102 font-bold'
+                            : 'bg-white text-[#5C493A] border-[#DCD1C0] hover:border-[#B93829]/50 shadow-2xs'
                         }`}
                       >
                         <div className="text-sm font-black flex items-center justify-center gap-0.5">
                           <span>{pkg.stars}</span>
-                          <span className="text-yellow-500">⭐</span>
+                          <span className="text-amber-500">⭐</span>
                         </div>
                         <div className="text-[11px] font-bold mt-0.5">{pkg.points.toLocaleString()} 积分</div>
                         <div className="text-[9px] opacity-75">{pkg.desc}</div>
@@ -153,43 +153,43 @@ export const PaymentModal: React.FC<Props> = ({ isOpen, onClose, user, onSuccess
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-[#5c4033]">或输入自定义 Stars 数量 (1⭐ = 500积分)</label>
+                    <label className="text-xs font-bold text-[#5C493A] font-serif">或输入自定义 Stars 数量 (1⭐ = 500积分)</label>
                     <div className="relative">
                       <input 
                           type="number" 
                           min="1"
                           value={buyAmount}
                           onChange={(e) => setBuyAmount(e.target.value)}
-                          className="w-full bg-[#fcf5e5] border-2 border-[#5c4033] rounded-xl px-4 py-2.5 font-bold text-[#5c4033] text-lg focus:outline-none focus:ring-2 focus:ring-[#8B0000]"
+                          className="w-full bg-white border border-[#DCD1C0] rounded-2xl px-4 py-2.5 font-bold text-[#2B231C] text-base focus:outline-hidden focus:border-[#B93829] focus:ring-1 focus:ring-[#B93829] shadow-2xs"
                           placeholder="输入星星数量"
                       />
-                      <span className="absolute right-3 top-3 text-sm font-bold text-yellow-600">⭐ Stars</span>
+                      <span className="absolute right-3.5 top-3 text-xs font-bold text-amber-600">⭐ Stars</span>
                     </div>
                 </div>
 
-                <div className="bg-[#5c4033]/10 p-2.5 rounded-xl text-xs text-[#5c4033] space-y-1">
+                <div className="bg-white/80 border border-[#DCD1C0] p-3 rounded-2xl text-xs text-[#5C493A] space-y-1 shadow-2xs">
                   <div className="flex items-center gap-1.5 font-bold">
-                    <ShieldCheck className="w-4 h-4 text-[#8B0000]" />
-                    <span>预计到账：<strong className="text-[#8B0000]">{(parseInt(buyAmount) || 0) * 500}</strong> 积分</span>
+                    <ShieldCheck className="w-4 h-4 text-[#B93829]" />
+                    <span>预计到账：<strong className="text-[#B93829] font-mono">{(parseInt(buyAmount) || 0) * 500}</strong> 积分</span>
                   </div>
-                  <div className="text-[11px] text-[#5c4033]/80">使用 Telegram Stars 官方安全支付，即充即到。</div>
+                  <div className="text-[11px] text-[#5C493A]/80">使用 Telegram Stars 官方安全支付，即充即到。</div>
                 </div>
 
                 {statusMsg && (
-                  <p className="text-center text-xs font-bold text-[#8B0000] animate-pulse">{statusMsg}</p>
+                  <p className="text-center text-xs font-bold text-[#B93829] animate-pulse">{statusMsg}</p>
                 )}
 
                 <div className="pt-2 flex gap-2">
                     <button 
                         onClick={onClose}
-                        className="flex-1 py-2.5 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-xl transition"
+                        className="flex-1 py-2.5 bg-white hover:bg-stone-100 text-[#5C493A] border border-[#DCD1C0] font-bold rounded-2xl transition cursor-pointer"
                     >
                         取消
                     </button>
                     <button 
                         onClick={handleConfirmBuy}
                         disabled={isBuying}
-                        className="flex-[2] py-2.5 bg-[#8B0000] hover:bg-[#6b0000] text-[#f0dbb0] font-black rounded-xl shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="flex-[2] py-2.5 bg-[#B93829] hover:bg-[#A0281A] active:scale-95 text-white font-bold rounded-2xl shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                     >
                         <Sparkles className="w-4 h-4" />
                         <span>{isBuying ? "正在处理..." : `确认支付 ${buyAmount || 0} ⭐`}</span>

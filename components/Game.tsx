@@ -487,28 +487,28 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
 
   if (isInitializing) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#f0dbb0] text-[#5c4033] wood-texture">
-         <div className="w-16 h-16 border-4 border-[#8B0000] border-t-transparent rounded-full animate-spin mb-4" />
-         <p className="text-lg font-black animate-pulse">{statusMessage}</p>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center serene-bg text-[#2B231C]">
+         <div className="w-12 h-12 border-3 border-[#B93829] border-t-transparent rounded-full animate-spin mb-4" />
+         <p className="text-base font-bold font-serif tracking-wider animate-pulse">{statusMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-[#f0dbb0] text-[#4a3b2a] font-sans pb-6 wood-texture select-none">
+    <div className="min-h-screen w-full flex flex-col items-center serene-bg text-[#2D2721] font-sans pb-6 select-none">
       {/* Top Header */}
-      <header className="w-full max-w-lg px-4 py-2.5 flex justify-between items-center bg-[#5c4033] text-[#f0dbb0] shadow-md z-30">
+      <header className="w-full max-w-lg px-4 py-2.5 flex justify-between items-center bg-[#1E2125] text-[#FAF6F0] shadow-md border-b border-amber-400/20 z-30">
         <button 
           onClick={onBack} 
-          className="flex items-center space-x-1 hover:text-amber-300 transition"
+          className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 transition text-xs font-bold text-amber-200"
         >
-          <ChevronLeft className="w-5 h-5" />
-          <span className="font-bold text-xs">大厅</span>
+          <ChevronLeft className="w-4 h-4" />
+          <span>大厅</span>
         </button>
         
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-1.5 font-black text-sm tracking-wider">
-            <span>{mode === 'pve' ? '人机博弈' : '楚河论剑 (PVP)'}</span>
+          <div className="flex items-center gap-1.5 font-black text-sm tracking-wider font-serif">
+            <span>{mode === 'pve' ? '人机弈算' : '楚河论剑 (PVP)'}</span>
             {mode === 'pve' && (
               <button
                 onClick={() => {
@@ -517,7 +517,7 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
                   const nextIdx = (levels.indexOf(aiDifficulty) + 1) % levels.length;
                   setAiDifficulty(levels[nextIdx]);
                 }}
-                className="text-[10px] px-2 py-0.5 bg-[#8B0000] hover:bg-[#a10000] active:scale-95 transition text-amber-200 rounded-full font-bold shadow-xs border border-amber-300/30 flex items-center gap-1 cursor-pointer"
+                className="text-[10px] px-2 py-0.5 bg-[#B93829] hover:bg-[#D34533] active:scale-95 transition text-amber-100 rounded-full font-bold shadow-xs border border-amber-300/30 flex items-center gap-1 cursor-pointer font-sans"
                 title="点击切换 AI 难度"
               >
                 <span>{aiDifficulty === 'beginner' ? '新手' : aiDifficulty === 'intermediate' ? '高手' : aiDifficulty === 'master' ? '大师' : '特级大师'}</span>
@@ -526,53 +526,56 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
             )}
           </div>
           {currentOpening ? (
-            <div className="flex items-center gap-1 text-[10px] text-amber-200 font-medium">
+            <div className="flex items-center gap-1 text-[10px] text-amber-300 font-medium">
               <Compass className="w-3 h-3 text-amber-300 animate-spin" />
               <span>{currentOpening}</span>
             </div>
           ) : (
-            <span className="text-[10px] opacity-75 font-mono">
+            <span className="text-[10px] text-stone-300 font-mono">
               {moveHistory.length > 0 ? `第 ${Math.ceil(moveHistory.length / 2)} 回合` : '序盘对决'}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button 
             onClick={toggleSound} 
-            className="p-1.5 hover:bg-[#4a3025] rounded-full transition"
+            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-xl transition text-amber-200"
             title={soundEnabled ? "静音" : "开启音效"}
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-300" /> : <VolumeX className="w-4 h-4 opacity-50" />}
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 opacity-50" />}
           </button>
           <button 
             onClick={() => setIsRulesOpen(true)} 
-            className="p-1.5 hover:bg-[#4a3025] rounded-full transition"
+            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-xl transition text-amber-200"
             title="棋规指南"
           >
-            <BookOpen className="w-4 h-4 text-amber-300" />
+            <BookOpen className="w-4 h-4" />
           </button>
         </div>
       </header>
 
       {/* Opponent & Player Info Bars */}
-      <div className="w-full max-w-[480px] px-3 pt-2 pb-1 space-y-1.5 z-10">
+      <div className="w-full max-w-[480px] px-3 pt-2.5 pb-1 space-y-2 z-10">
         {/* Status banner */}
         {statusMessage && (
-          <div className="bg-[#8B0000] text-amber-100 text-center py-1 rounded-full text-xs font-bold shadow animate-bounce">
-            ⚠️ {statusMessage}
+          <div className="bg-[#B93829] text-amber-100 text-center py-1.5 px-3 rounded-full text-xs font-bold shadow-sm animate-bounce flex items-center justify-center gap-1.5">
+            <span>⚠️</span>
+            <span>{statusMessage}</span>
           </div>
         )}
 
         {/* Dual Players Dashboard */}
-        <div className="grid grid-cols-2 gap-2 bg-[#e3c08d]/90 p-2.5 rounded-2xl border-2 border-[#5c4033]/40 shadow-inner">
+        <div className="grid grid-cols-2 gap-2.5">
           {/* Black Player / AI */}
-          <div className={`flex flex-col justify-between p-2 rounded-xl transition-all ${
-            turn === Color.BLACK ? 'bg-[#5c4033] text-[#f0dbb0] shadow-md scale-[1.02]' : 'bg-[#fcf5e5]/80 text-[#5c4033]'
+          <div className={`flex flex-col justify-between p-2.5 rounded-2xl border transition-all duration-200 ${
+            turn === Color.BLACK 
+              ? 'bg-[#1E2125] text-white border-stone-600 shadow-md ring-2 ring-stone-700/50 scale-[1.01]' 
+              : 'bg-white/85 text-[#2B231C] border-[#D8CEBF] shadow-2xs'
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-stone-900 border-2 border-stone-600 flex items-center justify-center font-black text-white text-xs shadow">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-stone-800 to-stone-950 border border-stone-600 flex items-center justify-center font-serif font-black text-white text-xs shadow-xs">
                   将
                 </div>
                 <div className="flex flex-col">
@@ -581,15 +584,15 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
                       ? (aiDifficulty === 'grandmaster' ? '特级大师 AI' : aiDifficulty === 'master' ? '象棋大师 AI' : aiDifficulty === 'intermediate' ? '业余高手 AI' : '棋坛新手 AI') 
                       : '黑方对手'}
                   </span>
-                  <span className="text-[10px] opacity-75 font-mono">战力: {blackMaterial}</span>
+                  <span className="text-[10px] opacity-70 font-mono">战力: {blackMaterial}</span>
                 </div>
               </div>
               {turn === Color.BLACK && !winner && (
                 <div className="text-right">
                   {isAiThinking ? (
-                    <span className="text-[10px] font-bold text-amber-300 animate-pulse">弈算中...</span>
+                    <span className="text-[10px] font-bold text-amber-300 animate-pulse font-serif">弈算中...</span>
                   ) : (
-                    <span className={`text-xs font-mono font-bold ${timeLeft < 15 ? 'text-red-400 animate-ping' : ''}`}>
+                    <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${timeLeft < 15 ? 'bg-red-500/20 text-red-400 animate-ping' : 'bg-white/10 text-amber-300'}`}>
                       {timeLeft}s
                     </span>
                   )}
@@ -598,9 +601,9 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
             </div>
             {/* 黑方吃掉的红子 */}
             {blackCaptured.length > 0 && (
-              <div className="flex flex-wrap gap-0.5 mt-1.5 pt-1 border-t border-black/10">
+              <div className="flex flex-wrap gap-1 mt-2 pt-1.5 border-t border-black/10">
                 {blackCaptured.map((t, idx) => (
-                  <span key={idx} className="w-4 h-4 rounded-full bg-[#8B0000] text-[#f0dbb0] border border-amber-300/40 text-[9px] font-bold flex items-center justify-center shadow-xs">
+                  <span key={idx} className="w-4 h-4 rounded-full bg-[#B93829] text-amber-100 border border-amber-300/40 text-[9px] font-serif font-black flex items-center justify-center shadow-2xs">
                     {PIECE_CHARS[t][0]}
                   </span>
                 ))}
@@ -609,22 +612,24 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
           </div>
 
           {/* Red Player (User) */}
-          <div className={`flex flex-col justify-between p-2 rounded-xl transition-all ${
-            turn === Color.RED ? 'bg-[#8B0000] text-[#f0dbb0] shadow-md scale-[1.02]' : 'bg-[#fcf5e5]/80 text-[#5c4033]'
+          <div className={`flex flex-col justify-between p-2.5 rounded-2xl border transition-all duration-200 ${
+            turn === Color.RED 
+              ? 'bg-gradient-to-br from-[#FFF9F2] to-[#FAF2E3] text-[#2B231C] border-[#B93829] shadow-md ring-2 ring-[#B93829]/30 scale-[1.01]' 
+              : 'bg-white/85 text-[#2B231C] border-[#D8CEBF] shadow-2xs'
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#8B0000] border-2 border-amber-300 flex items-center justify-center font-black text-[#f0dbb0] text-xs shadow">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#B93829] to-[#8E2417] border border-amber-300/80 flex items-center justify-center font-serif font-black text-amber-100 text-xs shadow-xs">
                   帅
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-xs">{user?.username || '执红棋士'}</span>
-                  <span className="text-[10px] opacity-75 font-mono">战力: {redMaterial}</span>
+                  <span className="text-[10px] opacity-70 font-mono">战力: {redMaterial}</span>
                 </div>
               </div>
               {turn === Color.RED && !winner && (
                 <div className="text-right">
-                  <span className={`text-xs font-mono font-bold ${timeLeft < 15 ? 'text-amber-200 animate-ping' : ''}`}>
+                  <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${timeLeft < 15 ? 'bg-red-500/20 text-red-600 animate-ping' : 'bg-amber-100 text-amber-900'}`}>
                     {timeLeft}s
                   </span>
                 </div>
@@ -632,9 +637,9 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
             </div>
             {/* 红方吃掉的黑子 */}
             {redCaptured.length > 0 && (
-              <div className="flex flex-wrap gap-0.5 mt-1.5 pt-1 border-t border-black/10">
+              <div className="flex flex-wrap gap-1 mt-2 pt-1.5 border-t border-black/10">
                 {redCaptured.map((t, idx) => (
-                  <span key={idx} className="w-4 h-4 rounded-full bg-stone-900 text-white border border-stone-600 text-[9px] font-bold flex items-center justify-center shadow-xs">
+                  <span key={idx} className="w-4 h-4 rounded-full bg-stone-900 text-white border border-stone-600 text-[9px] font-serif font-black flex items-center justify-center shadow-2xs">
                     {PIECE_CHARS[t][1]}
                   </span>
                 ))}
@@ -643,23 +648,23 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
           </div>
         </div>
 
-        {/* Material Advantage / Balance of Power Bar */}
-        <div className="bg-[#e3c08d]/60 px-2.5 py-1.5 rounded-xl border border-[#5c4033]/20 flex items-center justify-between gap-2 text-[10px] mt-1.5">
-          <span className="font-bold text-[#8B0000] whitespace-nowrap">
+        {/* Material Advantage Gauge */}
+        <div className="bg-white/80 px-3 py-1.5 rounded-2xl border border-[#DCD1C0] flex items-center justify-between gap-2.5 text-[11px] shadow-2xs">
+          <span className="font-bold text-[#B93829] whitespace-nowrap font-mono">
             红方 {redMaterial}
           </span>
           <div className="flex-1 flex flex-col items-center">
-            <div className="w-full bg-stone-800 h-2 rounded-full overflow-hidden border border-[#5c4033]/30 flex">
+            <div className="w-full bg-stone-200 h-2 rounded-full overflow-hidden flex shadow-inner">
               <div 
-                className="bg-red-700 h-full transition-all duration-500 ease-out" 
+                className="bg-gradient-to-r from-[#B93829] to-[#D34533] h-full transition-all duration-500 ease-out" 
                 style={{ width: `${Math.min(85, Math.max(15, Math.round((redMaterial / Math.max(1, redMaterial + blackMaterial)) * 100)))}%` }}
               />
               <div 
-                className="bg-stone-900 h-full transition-all duration-500 ease-out" 
+                className="bg-stone-800 h-full transition-all duration-500 ease-out" 
                 style={{ width: `${100 - Math.min(85, Math.max(15, Math.round((redMaterial / Math.max(1, redMaterial + blackMaterial)) * 100)))}%` }}
               />
             </div>
-            <span className="text-[9px] font-bold mt-0.5 text-[#5c4033]/90">
+            <span className="text-[10px] font-bold mt-0.5 text-[#5C493A]">
               {(() => {
                 const diff = redMaterial - blackMaterial;
                 if (diff >= 300) return `红方大优 (+${diff})`;
@@ -670,7 +675,7 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
               })()}
             </span>
           </div>
-          <span className="font-bold text-stone-900 whitespace-nowrap">
+          <span className="font-bold text-stone-900 whitespace-nowrap font-mono">
             黑方 {blackMaterial}
           </span>
         </div>
@@ -692,21 +697,21 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
       </main>
 
       {/* Action Command Bar */}
-      <div className="w-full max-w-[480px] px-3 pt-2 grid grid-cols-6 gap-1 sm:gap-1.5">
+      <div className="w-full max-w-[480px] px-3 pt-2 grid grid-cols-6 gap-1.5">
         <button
           onClick={() => { soundManager.playClick(); handleUndo(); }}
           disabled={mode !== 'pve' || turn !== Color.RED || historyStack.length < 2 || !!winner || isAiThinking}
-          className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition disabled:opacity-40"
+          className="flex flex-col items-center justify-center py-2 px-1 bg-white/90 hover:bg-white active:scale-95 text-[#3D2E24] border border-[#D5C7B4] rounded-2xl shadow-2xs transition disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
           title="悔棋"
         >
-          <Undo2 className="w-4 h-4 mb-0.5 text-[#8B0000]" />
+          <Undo2 className="w-4 h-4 mb-0.5 text-[#B93829]" />
           <span className="text-[10px] font-bold">悔棋</span>
         </button>
 
         <button
           onClick={() => { soundManager.playClick(); handleRequestAdvisor(); }}
           disabled={turn !== Color.RED || !!winner || isAiThinking}
-          className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition disabled:opacity-40"
+          className="flex flex-col items-center justify-center py-2 px-1 bg-white/90 hover:bg-white active:scale-95 text-[#3D2E24] border border-[#D5C7B4] rounded-2xl shadow-2xs transition disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
           title="军师锦囊"
         >
           <Lightbulb className="w-4 h-4 mb-0.5 text-amber-600" />
@@ -715,26 +720,26 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
 
         <button
           onClick={() => { soundManager.playClick(); setIsFlipped(!isFlipped); }}
-          className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition"
+          className="flex flex-col items-center justify-center py-2 px-1 bg-white/90 hover:bg-white active:scale-95 text-[#3D2E24] border border-[#D5C7B4] rounded-2xl shadow-2xs transition cursor-pointer"
           title="翻转棋盘"
         >
-          <RotateCw className="w-4 h-4 mb-0.5 text-[#5c4033]" />
+          <RotateCw className="w-4 h-4 mb-0.5 text-[#5C493A]" />
           <span className="text-[10px] font-bold">翻转</span>
         </button>
 
         <button
           onClick={() => { soundManager.playClick(); setIsHistoryOpen(true); }}
-          className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition"
+          className="flex flex-col items-center justify-center py-2 px-1 bg-white/90 hover:bg-white active:scale-95 text-[#3D2E24] border border-[#D5C7B4] rounded-2xl shadow-2xs transition cursor-pointer"
           title="查看棋谱"
         >
-          <History className="w-4 h-4 mb-0.5 text-[#5c4033]" />
+          <History className="w-4 h-4 mb-0.5 text-[#5C493A]" />
           <span className="text-[10px] font-bold">棋谱</span>
         </button>
 
         <button
           onClick={() => { soundManager.playClick(); handleDraw(); }}
           disabled={!!winner || isAiThinking}
-          className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-[#ebd4a9] text-[#5c4033] border border-[#5c4033]/40 rounded-xl transition disabled:opacity-40"
+          className="flex flex-col items-center justify-center py-2 px-1 bg-white/90 hover:bg-white active:scale-95 text-[#3D2E24] border border-[#D5C7B4] rounded-2xl shadow-2xs transition disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
           title="提议和棋"
         >
           <Handshake className="w-4 h-4 mb-0.5 text-amber-700" />
@@ -744,33 +749,33 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
         <button
           onClick={() => { soundManager.playClick(); handleSurrender(); }}
           disabled={!!winner || isAiThinking}
-          className="flex flex-col items-center justify-center py-2 px-1 bg-[#fcf5e5] hover:bg-red-100 text-red-800 border border-red-300 rounded-xl transition disabled:opacity-40"
+          className="flex flex-col items-center justify-center py-2 px-1 bg-white/90 hover:bg-rose-50 active:scale-95 text-rose-800 border border-rose-200 rounded-2xl shadow-2xs transition disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
           title="投降认输"
         >
-          <Flag className="w-4 h-4 mb-0.5 text-red-700" />
+          <Flag className="w-4 h-4 mb-0.5 text-rose-700" />
           <span className="text-[10px] font-bold">认输</span>
         </button>
       </div>
 
-      {/* AI Difficulty Selector (PVE mode) */}
+      {/* AI Difficulty Selector Segmented Bar (PVE mode) */}
       {mode === 'pve' && !winner && (
-        <div className="w-full max-w-[480px] px-3 pt-2 flex items-center justify-between text-xs text-[#5c4033]">
+        <div className="w-full max-w-[480px] px-3 pt-2.5 flex items-center justify-between text-xs text-[#5C493A]">
           <div className="flex items-center gap-1 font-bold">
-            <Brain className="w-3.5 h-3.5 text-[#8B0000]" />
-            <span>AI难度:</span>
+            <Brain className="w-3.5 h-3.5 text-[#B93829]" />
+            <span>AI段位:</span>
           </div>
-          <div className="flex gap-1.5">
-            {(['beginner', 'intermediate', 'master'] as AIDifficulty[]).map(diff => (
+          <div className="flex gap-1 bg-white/70 p-0.5 rounded-xl border border-[#DCD1C0]">
+            {(['beginner', 'intermediate', 'master', 'grandmaster'] as AIDifficulty[]).map(diff => (
               <button
                 key={diff}
-                onClick={() => setAiDifficulty(diff)}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition ${
+                onClick={() => { soundManager.playClick(); setAiDifficulty(diff); }}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                   aiDifficulty === diff
-                    ? 'bg-[#8B0000] text-[#f0dbb0] shadow-sm'
-                    : 'bg-[#e3c08d] text-[#5c4033] hover:bg-[#d4b483]'
+                    ? 'bg-[#B93829] text-white shadow-2xs'
+                    : 'text-[#5C493A] hover:bg-white/80'
                 }`}
               >
-                {diff === 'beginner' ? '休闲初级' : diff === 'intermediate' ? '高手中级' : '特级大师'}
+                {diff === 'beginner' ? '新手' : diff === 'intermediate' ? '高手' : diff === 'master' ? '大师' : '特级大师'}
               </button>
             ))}
           </div>
@@ -779,52 +784,52 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
 
       {/* Military Advisor Drawer / Modal */}
       {isAdvisorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-[#f0dbb0] border-4 border-[#5c4033] w-full max-w-md rounded-3xl p-5 relative shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-[#FAF7F0] border border-[#D5C7B4] w-full max-w-md rounded-3xl p-5 relative shadow-2xl">
             <button 
               onClick={() => setIsAdvisorOpen(false)} 
-              className="absolute top-4 right-4 p-1 hover:bg-[#5c4033]/10 text-[#5c4033] rounded-full transition"
+              className="absolute top-4 right-4 p-1.5 hover:bg-black/5 text-[#5C493A] rounded-full transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center justify-center space-x-2 border-b-2 border-[#5c4033]/30 pb-3 mb-3">
-              <Sparkles className="w-6 h-6 text-amber-600" />
-              <h2 className="text-xl font-black text-[#5c4033] tracking-wide">军师锦囊 · 妙手推演</h2>
+            <div className="flex items-center justify-center space-x-2 border-b border-[#3D281C]/15 pb-3 mb-3">
+              <Sparkles className="w-5 h-5 text-amber-600" />
+              <h2 className="text-xl font-black font-serif text-[#2B231C] tracking-wide">军师锦囊 · 妙手推演</h2>
             </div>
 
             {isCalculatingAdvisor ? (
-              <div className="py-8 text-center text-sm font-bold text-[#5c4033] flex flex-col items-center gap-2">
-                <div className="w-8 h-8 border-3 border-[#8B0000] border-t-transparent rounded-full animate-spin" />
-                <span>军师正在深入推演棋局...</span>
+              <div className="py-8 text-center text-sm font-bold text-[#5C493A] flex flex-col items-center gap-2.5">
+                <div className="w-8 h-8 border-3 border-[#B93829] border-t-transparent rounded-full animate-spin" />
+                <span className="font-serif">军师正在精算棋局玄机...</span>
               </div>
             ) : advisorMoves.length === 0 ? (
-              <div className="py-6 text-center text-xs text-[#5c4033] font-bold">
-                当前局势尚无推荐妙手，请稳扎稳打。
+              <div className="py-6 text-center text-xs text-[#5C493A] font-bold">
+                当前局势平稳，尚无推荐妙手，请稳扎稳打。
               </div>
             ) : (
               <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
                 {advisorMoves.map((rec, i) => (
                   <div 
                     key={i} 
-                    className="p-3 bg-[#fcf5e5] border-2 border-[#5c4033]/30 rounded-2xl flex items-center justify-between hover:border-[#8B0000] transition"
+                    className="p-3 bg-white border border-[#D5C7B4] hover:border-[#B93829] rounded-2xl flex items-center justify-between transition shadow-2xs"
                   >
                     <div className="flex-1 pr-2">
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-[#8B0000] text-amber-100 font-mono text-xs font-black">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#B93829] text-amber-100 font-serif text-xs font-black">
                           {rec.notation}
                         </span>
                         <span className="text-[10px] text-amber-800 font-bold">
                           {i === 0 ? '★ 首选妙招' : `备选招法 ${i + 1}`}
                         </span>
                       </div>
-                      <p className="text-xs text-[#5c4033] mt-1 font-medium leading-relaxed">
+                      <p className="text-xs text-[#5C493A] mt-1 font-medium leading-relaxed">
                         {rec.desc}
                       </p>
                     </div>
                     <button
                       onClick={() => handleApplyAdvisorMove(rec.move)}
-                      className="px-3 py-2 bg-[#8B0000] hover:bg-[#6b0000] text-[#f0dbb0] font-black text-xs rounded-xl shadow transition whitespace-nowrap"
+                      className="px-3 py-1.5 bg-[#B93829] hover:bg-[#A0281A] active:scale-95 text-white font-bold text-xs rounded-xl shadow-2xs transition whitespace-nowrap cursor-pointer"
                     >
                       采用此招
                     </button>
@@ -838,29 +843,29 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
 
       {/* Move History Drawer / Modal */}
       {isHistoryOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-[#f0dbb0] border-4 border-[#5c4033] w-full max-w-sm rounded-3xl p-5 relative shadow-2xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-[#FAF7F0] border border-[#D5C7B4] w-full max-w-sm rounded-3xl p-5 relative shadow-2xl max-h-[80vh] flex flex-col">
             <button 
               onClick={() => setIsHistoryOpen(false)} 
-              className="absolute top-4 right-4 p-1 hover:bg-[#5c4033]/10 text-[#5c4033] rounded-full transition"
+              className="absolute top-4 right-4 p-1.5 hover:bg-black/5 text-[#5C493A] rounded-full transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center justify-center space-x-2 border-b-2 border-[#5c4033]/30 pb-3 mb-3">
-              <History className="w-5 h-5 text-[#8B0000]" />
-              <h2 className="text-xl font-black text-[#5c4033]">对局棋谱</h2>
+            <div className="flex items-center justify-center space-x-2 border-b border-[#3D281C]/15 pb-3 mb-3">
+              <History className="w-5 h-5 text-[#B93829]" />
+              <h2 className="text-xl font-black font-serif text-[#2B231C]">对局棋谱</h2>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-1 text-xs">
               {moveHistory.length === 0 ? (
                 <div className="py-8 text-center opacity-60 font-bold">尚未开始走子</div>
               ) : (
-                <div className="grid grid-cols-2 gap-x-3 gap-y-1 bg-[#e3c08d] p-3 rounded-2xl border border-[#5c4033]/30">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 bg-white p-3 rounded-2xl border border-[#DCD1C0]">
                   {moveHistory.map((m, idx) => (
                     <div key={idx} className="flex items-center gap-1.5 py-0.5">
                       <span className="text-[10px] opacity-60 font-mono w-4">{idx + 1}.</span>
-                      <span className={`font-bold ${m.color === Color.RED ? 'text-[#8B0000]' : 'text-stone-900'}`}>
+                      <span className={`font-serif font-bold ${m.color === Color.RED ? 'text-[#B93829]' : 'text-stone-900'}`}>
                         {m.notation}
                       </span>
                     </div>
@@ -871,7 +876,7 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
 
             <button
               onClick={() => setIsHistoryOpen(false)}
-              className="mt-3 w-full py-2 bg-[#5c4033] text-[#f0dbb0] font-bold rounded-xl text-xs"
+              className="mt-3 w-full py-2 bg-[#2B231C] text-[#FAF6F0] font-bold rounded-xl text-xs active:scale-95 transition cursor-pointer"
             >
               关闭
             </button>
@@ -884,28 +889,28 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
 
       {/* Game Over Banner / Modal */}
       {winner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="bg-[#f0dbb0] border-4 border-[#5c4033] w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl relative">
-            <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center border-3 border-[#5c4033] shadow-inner bg-[#e3c08d]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="bg-[#FAF7F0] border border-[#D5C7B4] w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl relative">
+            <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center border border-[#D5C7B4] shadow-sm bg-white">
               {winner === Color.RED ? (
                 <Trophy className="w-9 h-9 text-amber-600 animate-bounce" />
               ) : winner === 'Draw' ? (
-                <Handshake className="w-9 h-9 text-[#5c4033]" />
+                <Handshake className="w-9 h-9 text-[#5C493A]" />
               ) : (
                 <Shield className="w-9 h-9 text-stone-700" />
               )}
             </div>
 
-            <h2 className="text-3xl font-black text-[#5c4033] tracking-wide mb-1">
+            <h2 className="text-3xl font-black font-serif text-[#2B231C] tracking-wide mb-1">
               {winner === Color.RED ? "旗开得胜！" : winner === 'Draw' ? "势均力敌" : "败局已定"}
             </h2>
 
-            <p className="text-sm font-bold text-[#8B0000] mb-2">
+            <p className="text-sm font-bold text-[#B93829] mb-2 font-serif">
               {resultMessage || (winner === Color.RED ? "恭喜斩获胜利！" : "再接再厉，棋逢对手！")}
             </p>
 
             {pointsEarned > 0 && (
-              <div className="mb-4 px-3 py-1 bg-amber-100/90 border border-amber-300 rounded-full inline-flex items-center gap-1.5 text-amber-900 text-xs font-bold shadow-xs">
+              <div className="mb-4 px-3 py-1 bg-amber-100/90 border border-amber-300 rounded-full inline-flex items-center gap-1.5 text-amber-900 text-xs font-bold shadow-2xs">
                 <Coins className="w-3.5 h-3.5 text-amber-600" />
                 <span>结算奖励 +{pointsEarned} 积分已入账</span>
               </div>
@@ -914,14 +919,14 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
             <div className="space-y-2">
               <button
                 onClick={() => { soundManager.playClick(); handleRestart(); }}
-                className="w-full py-3 bg-[#8B0000] hover:bg-[#6b0000] text-[#f0dbb0] font-black rounded-xl shadow-lg transition"
+                className="w-full py-3 bg-[#B93829] hover:bg-[#A0281A] active:scale-95 text-white font-bold rounded-2xl shadow-md transition cursor-pointer"
               >
                 重整旗鼓，再战一局
               </button>
 
               <button
                 onClick={() => { soundManager.playClick(); onBack(); }}
-                className="w-full py-2.5 bg-[#e3c08d] hover:bg-[#d4b483] text-[#5c4033] font-bold rounded-xl transition"
+                className="w-full py-2.5 bg-white hover:bg-stone-100 active:scale-95 text-[#5C493A] border border-[#D5C7B4] font-bold rounded-2xl transition cursor-pointer"
               >
                 返回游戏大厅
               </button>

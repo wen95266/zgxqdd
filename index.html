@@ -7,24 +7,85 @@
     <meta name="description" content="Telegram 迷你应用版中国象棋，由 Google Gemini AI 驱动的智能对手与 Cloudflare Pages 架构。" />
     <meta property="og:title" content="Gemini 中国象棋" />
     <meta property="og:description" content="Telegram 迷你应用版中国象棋，由 Google Gemini AI 驱动的智能对手与 Cloudflare Pages 架构。" />
+    
+    <!-- Google Fonts: Classical Noto Serif SC & Clean Modern Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              serif: ['"Noto Serif SC"', '"STSong"', '"Songti SC"', 'SimSun', 'serif'],
+              sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            },
+            colors: {
+              cinnabar: {
+                DEFAULT: '#B93829',
+                light: '#D34533',
+                dark: '#8E2417',
+              },
+              ink: {
+                DEFAULT: '#1E2125',
+                light: '#32373E',
+                deep: '#121417',
+              },
+              board: {
+                bg: '#EFE2CC',
+                line: '#4A3425',
+                border: '#3D281C',
+                dark: '#2E1D13',
+              },
+              parchment: {
+                50: '#FAF8F4',
+                100: '#F5F1E8',
+                200: '#EAE3D5',
+                300: '#DCD2C0',
+                800: '#4A3D2F',
+                900: '#2A2016',
+              }
+            },
+            boxShadow: {
+              'piece': '0 3px 6px rgba(0,0,0,0.22), 0 1px 3px rgba(0,0,0,0.12)',
+              'piece-hover': '0 6px 12px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15)',
+              'piece-active': '0 0 16px rgba(245, 158, 11, 0.55), 0 4px 8px rgba(0,0,0,0.2)',
+              'board': '0 12px 32px -4px rgba(45, 27, 14, 0.35), 0 4px 12px rgba(0, 0, 0, 0.1)',
+            }
+          }
+        }
+      }
+    </script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       body {
         overscroll-behavior: none;
         user-select: none;
-        background-color: #f0dbb0;
+        -webkit-user-select: none;
+        background-color: #F4F1EA;
+        color: #2D2721;
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
       }
-      .wood-texture {
-        background-color: #e3c08d;
-        background-image: linear-gradient(45deg, rgba(0,0,0,0.03) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.03) 75%, rgba(0,0,0,0.03)), 
-                          linear-gradient(45deg, rgba(0,0,0,0.03) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.03) 75%, rgba(0,0,0,0.03));
-        background-size: 20px 20px;
-        background-position: 0 0, 10px 10px;
+      /* Subtle silk/paper texture */
+      .serene-bg {
+        background-color: #F5F2EA;
+        background-image: 
+          radial-gradient(at 100% 0%, rgba(225, 214, 195, 0.35) 0px, transparent 50%),
+          radial-gradient(at 0% 100%, rgba(215, 202, 180, 0.3) 0px, transparent 50%);
+      }
+      /* Premium authentic wood-grain board texture */
+      .board-wood {
+        background-color: #EFE2CC;
+        background-image: 
+          linear-gradient(90deg, rgba(74, 52, 37, 0.02) 1px, transparent 1px),
+          linear-gradient(rgba(74, 52, 37, 0.02) 1px, transparent 1px);
+        background-size: 24px 24px;
       }
     </style>
   </head>
-  <body>
+  <body class="serene-bg min-h-screen">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

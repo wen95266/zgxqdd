@@ -1,5 +1,5 @@
 import React from 'react';
-import { BoardState, Position, Move, Color, PieceType } from '../types';
+import { BoardState, Position, Move, Color } from '../types';
 import { XiangqiPiece } from './XiangqiPiece';
 
 interface Props {
@@ -21,10 +21,10 @@ const StarMark: React.FC<{ cx: number; cy: number; left?: boolean; right?: boole
   left = true, 
   right = true 
 }) => {
-  const d = 1.2;
-  const len = 1.6;
+  const d = 1.1;
+  const len = 1.5;
   return (
-    <g stroke="#5c4033" strokeWidth="0.4" fill="none" opacity="0.8">
+    <g stroke="#452E1E" strokeWidth="0.4" fill="none" opacity="0.85">
       {left && (
         <>
           {/* Top-Left */}
@@ -79,31 +79,31 @@ export const Board: React.FC<Props> = ({
   const blackCols = isFlipped ? ['9', '8', '7', '6', '5', '4', '3', '2', '1'] : ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
   return (
-    <div className="relative w-full aspect-[9/10] max-w-[480px] mx-auto wood-texture shadow-2xl rounded-2xl border-4 border-[#5c4033] p-1.5 select-none touch-manipulation">
+    <div className="relative w-full aspect-[9/10] max-w-[480px] mx-auto board-wood rounded-2xl sm:rounded-3xl border-[6px] sm:border-[8px] border-[#362216] shadow-[0_16px_36px_-6px_rgba(45,26,14,0.35),0_4px_12px_rgba(0,0,0,0.12)] p-1 select-none touch-manipulation ring-1 ring-[#855D40]/50">
        {/* Background Grid Lines & Authentic Ornaments via SVG */}
        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 90 100">
-          {/* 外边框 */}
-          <rect x="5" y="5" width="80" height="90" fill="none" stroke="#5c4033" strokeWidth="1.2" />
-          <rect x="4.2" y="4.2" width="81.6" height="91.6" fill="none" stroke="#5c4033" strokeWidth="0.4" opacity="0.6" />
+          {/* 外边框双线 */}
+          <rect x="5" y="5" width="80" height="90" fill="none" stroke="#452E1E" strokeWidth="1.1" />
+          <rect x="4.1" y="4.1" width="81.8" height="91.8" fill="none" stroke="#452E1E" strokeWidth="0.4" opacity="0.65" />
 
           {/* 横线 (Horizontal Lines) */}
           {Array.from({ length: 8 }).map((_, i) => (
-             <line key={`h-${i}`} x1="5" y1={15 + i * 10} x2="85" y2={15 + i * 10} stroke="#5c4033" strokeWidth="0.5" />
+             <line key={`h-${i}`} x1="5" y1={15 + i * 10} x2="85" y2={15 + i * 10} stroke="#452E1E" strokeWidth="0.45" />
           ))}
 
           {/* 竖线 (Vertical Lines，楚河汉界处断开) */}
           {Array.from({ length: 7 }).map((_, i) => (
              <React.Fragment key={`v-${i}`}>
-                <line x1={15 + i * 10} y1="5" x2={15 + i * 10} y2="45" stroke="#5c4033" strokeWidth="0.5" />
-                <line x1={15 + i * 10} y1="55" x2={15 + i * 10} y2="95" stroke="#5c4033" strokeWidth="0.5" />
+                <line x1={15 + i * 10} y1="5" x2={15 + i * 10} y2="45" stroke="#452E1E" strokeWidth="0.45" />
+                <line x1={15 + i * 10} y1="55" x2={15 + i * 10} y2="95" stroke="#452E1E" strokeWidth="0.45" />
              </React.Fragment>
           ))}
 
           {/* 九宫斜线 (Palace Diagonal X lines) */}
-          <line x1="35" y1="5" x2="55" y2="25" stroke="#5c4033" strokeWidth="0.5" />
-          <line x1="55" y1="5" x2="35" y2="25" stroke="#5c4033" strokeWidth="0.5" />
-          <line x1="35" y1="75" x2="55" y2="95" stroke="#5c4033" strokeWidth="0.5" />
-          <line x1="55" y1="75" x2="35" y2="95" stroke="#5c4033" strokeWidth="0.5" />
+          <line x1="35" y1="5" x2="55" y2="25" stroke="#452E1E" strokeWidth="0.45" />
+          <line x1="55" y1="5" x2="35" y2="25" stroke="#452E1E" strokeWidth="0.45" />
+          <line x1="35" y1="75" x2="55" y2="95" stroke="#452E1E" strokeWidth="0.45" />
+          <line x1="55" y1="75" x2="35" y2="95" stroke="#452E1E" strokeWidth="0.45" />
 
           {/* 传统炮位与兵位十字星折角标 (Star Corner Marks) */}
           {/* 黑方炮位 */}
@@ -130,26 +130,26 @@ export const Board: React.FC<Props> = ({
           <text 
             x={isFlipped ? "65" : "25"} 
             y="51.8" 
-            fontSize="4.2" 
+            fontSize="4.4" 
             fontWeight="bold"
             fontFamily="serif"
-            fill="#5c4033" 
-            opacity="0.85"
+            fill="#452E1E" 
+            opacity="0.8"
             textAnchor="middle" 
-            letterSpacing="2.5"
+            letterSpacing="3"
           >
             楚 河
           </text>
           <text 
             x={isFlipped ? "25" : "65"} 
             y="51.8" 
-            fontSize="4.2" 
+            fontSize="4.4" 
             fontWeight="bold"
             fontFamily="serif"
-            fill="#5c4033" 
-            opacity="0.85"
+            fill="#452E1E" 
+            opacity="0.8"
             textAnchor="middle" 
-            letterSpacing="2.5"
+            letterSpacing="3"
           >
             漢 界
           </text>
@@ -159,11 +159,11 @@ export const Board: React.FC<Props> = ({
             <text
               key={`top-col-${idx}`}
               x={5 + idx * 10}
-              y="2.8"
+              y="3.0"
               fontSize="2.4"
               fontWeight="bold"
-              fontFamily="monospace"
-              fill="#5c4033"
+              fontFamily="sans-serif"
+              fill="#503723"
               opacity="0.6"
               textAnchor="middle"
             >
@@ -180,8 +180,8 @@ export const Board: React.FC<Props> = ({
               fontSize="2.4"
               fontWeight="bold"
               fontFamily="serif"
-              fill="#5c4033"
-              opacity="0.6"
+              fill="#503723"
+              opacity="0.65"
               textAnchor="middle"
             >
               {c}
@@ -209,23 +209,23 @@ export const Board: React.FC<Props> = ({
                   className="relative w-full h-full flex items-center justify-center cursor-pointer"
                   onClick={() => handleCellClick(x, y)}
                 >
-                  {/* Last Move Indicator */}
+                  {/* Last Move Indicator: subtle warm gold bracket / glow */}
                   {(isLastMoveFrom || isLastMoveTo) && (
-                    <div className="absolute inset-[8%] border-2 border-dashed border-amber-600 rounded-full opacity-70 animate-pulse pointer-events-none" />
+                    <div className="absolute inset-[6%] bg-amber-500/15 border-2 border-amber-600/70 rounded-full animate-pulse pointer-events-none" />
                   )}
 
                   {/* General in Check Alert Pulse */}
                   {isGeneralInCheck && (
-                    <div className="absolute inset-[2%] bg-red-600/30 rounded-full animate-ping pointer-events-none" />
+                    <div className="absolute inset-[2%] bg-red-600/35 rounded-full animate-ping pointer-events-none" />
                   )}
 
                   {/* Valid Move Indicator */}
                   {isValidMoveTarget && (
                     <div className="absolute z-30 pointer-events-none flex items-center justify-center">
                       {piece ? (
-                        <div className="w-8 h-8 rounded-full border-4 border-red-600/80 animate-bounce scale-110" />
+                        <div className="w-8 h-8 rounded-full border-2 border-red-600 ring-2 ring-red-400/50 bg-red-500/20 animate-pulse scale-105" />
                       ) : (
-                        <div className="w-3.5 h-3.5 rounded-full bg-[#8B0000]/70 ring-2 ring-amber-200/80 shadow-md" />
+                        <div className="w-3.5 h-3.5 rounded-full bg-[#B93829]/80 ring-2 ring-amber-100/90 shadow-sm animate-pulse" />
                       )}
                     </div>
                   )}

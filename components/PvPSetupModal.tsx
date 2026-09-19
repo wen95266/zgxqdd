@@ -154,23 +154,23 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
-        <div className="bg-[#f0dbb0] border-4 border-[#5c4033] w-full max-w-sm rounded-3xl p-6 relative shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+        <div className="bg-[#FAF7F0] border border-[#D5C7B4] w-full max-w-sm rounded-3xl p-6 relative shadow-2xl">
             <button 
               onClick={resetAndClose} 
-              className="absolute top-4 right-4 p-1.5 hover:bg-[#5c4033]/10 text-[#5c4033] rounded-full transition"
+              className="absolute top-4 right-4 p-1.5 hover:bg-black/5 text-[#5C493A] rounded-full transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
             {/* Mode Switch Tabs */}
-            <div className="flex border-b-2 border-[#5c4033]/30 pb-3 mb-4 gap-2">
+            <div className="flex border-b border-[#3D281C]/15 pb-3 mb-4 gap-2">
               <button
                 onClick={() => { soundManager.playClick(); setActiveTab('create'); }}
-                className={`flex-1 py-1.5 rounded-xl font-black text-sm flex items-center justify-center gap-1.5 transition ${
+                className={`flex-1 py-2 rounded-2xl font-black font-serif text-sm flex items-center justify-center gap-1.5 transition cursor-pointer ${
                   activeTab === 'create'
-                    ? 'bg-[#8B0000] text-[#f0dbb0] shadow'
-                    : 'bg-[#fcf5e5] text-[#5c4033] hover:bg-[#e3c08d]'
+                    ? 'bg-[#B93829] text-white shadow-sm'
+                    : 'bg-white text-[#5C493A] border border-[#DCD1C0] hover:bg-stone-50'
                 }`}
               >
                 <Swords className="w-4 h-4" />
@@ -179,10 +179,10 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
 
               <button
                 onClick={() => { soundManager.playClick(); setActiveTab('join'); }}
-                className={`flex-1 py-1.5 rounded-xl font-black text-sm flex items-center justify-center gap-1.5 transition ${
+                className={`flex-1 py-2 rounded-2xl font-black font-serif text-sm flex items-center justify-center gap-1.5 transition cursor-pointer ${
                   activeTab === 'join'
-                    ? 'bg-[#8B0000] text-[#f0dbb0] shadow'
-                    : 'bg-[#fcf5e5] text-[#5c4033] hover:bg-[#e3c08d]'
+                    ? 'bg-[#B93829] text-white shadow-sm'
+                    : 'bg-white text-[#5C493A] border border-[#DCD1C0] hover:bg-stone-50'
                 }`}
               >
                 <LogIn className="w-4 h-4" />
@@ -193,22 +193,22 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
             {activeTab === 'join' ? (
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-[#5c4033] block mb-1.5">输入房间号或邀请链接</label>
+                  <label className="text-xs font-bold text-[#5C493A] block mb-1.5 font-serif">输入房间号或邀请链接</label>
                   <input
                     type="text"
                     value={inputRoomId}
                     onChange={(e) => setInputRoomId(e.target.value)}
                     placeholder="例如: room_abc123 或粘贴分享链接"
-                    className="w-full px-3 py-2.5 bg-[#fcf5e5] border-2 border-[#5c4033]/40 rounded-xl text-xs font-mono text-[#5c4033] focus:outline-hidden focus:border-[#8B0000]"
+                    className="w-full px-3 py-2.5 bg-white border border-[#DCD1C0] rounded-2xl text-xs font-mono text-[#2B231C] focus:outline-hidden focus:border-[#B93829] focus:ring-1 focus:ring-[#B93829] shadow-2xs"
                   />
-                  <p className="text-[10px] text-[#5c4033]/70 mt-1">
-                    从 Telegram 微信群或好友处获得对战房间号直接进入
+                  <p className="text-[10px] text-[#5C493A]/80 mt-1">
+                    从 Telegram 群聊或好友处获得对战房间号直接进入
                   </p>
                 </div>
 
                 <button
                   onClick={handleJoinByInput}
-                  className="w-full py-3 bg-[#8B0000] hover:bg-[#6b0000] text-[#f0dbb0] font-black rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-[#B93829] hover:bg-[#A0281A] active:scale-95 text-white font-bold rounded-2xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>立即入局对战</span>
@@ -217,15 +217,15 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
             ) : step === 'config' ? (
                 <div className="space-y-4">
                     <div>
-                        <label className="text-xs font-bold text-[#5c4033] block mb-1.5">入场门槛限制</label>
+                        <label className="text-xs font-bold text-[#5C493A] block mb-1.5 font-serif">入场门槛限制</label>
                         <div className="grid grid-cols-2 gap-2">
                             <button
                                 type="button"
                                 onClick={() => { soundManager.playClick(); setRestriction('any'); }}
-                                className={`py-2 px-3 rounded-xl border text-center transition text-xs font-bold ${
+                                className={`py-2 px-3 rounded-2xl border text-center transition text-xs font-bold cursor-pointer ${
                                     restriction === 'any'
-                                        ? 'bg-[#8B0000] text-[#f0dbb0] border-[#8B0000] shadow'
-                                        : 'bg-[#fcf5e5] text-[#5c4033] border-[#5c4033]/40 hover:bg-[#e3c08d]'
+                                        ? 'bg-[#B93829] text-white border-[#B93829] shadow-2xs'
+                                        : 'bg-white text-[#5C493A] border-[#DCD1C0] hover:bg-stone-50 shadow-2xs'
                                 }`}
                             >
                                 全民皆可入局
@@ -233,10 +233,10 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
                             <button
                                 type="button"
                                 onClick={() => { soundManager.playClick(); setRestriction('ranked'); }}
-                                className={`py-2 px-3 rounded-xl border text-center transition text-xs font-bold ${
+                                className={`py-2 px-3 rounded-2xl border text-center transition text-xs font-bold cursor-pointer ${
                                     restriction === 'ranked'
-                                        ? 'bg-[#8B0000] text-[#f0dbb0] border-[#8B0000] shadow'
-                                        : 'bg-[#fcf5e5] text-[#5c4033] border-[#5c4033]/40 hover:bg-[#e3c08d]'
+                                        ? 'bg-[#B93829] text-white border-[#B93829] shadow-2xs'
+                                        : 'bg-white text-[#5C493A] border-[#DCD1C0] hover:bg-stone-50 shadow-2xs'
                                 }`}
                             >
                                 设等级门槛 (擂台)
@@ -245,10 +245,10 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
                     </div>
 
                     {restriction === 'ranked' && (
-                        <div className="bg-[#e3c08d] p-3 rounded-xl border border-[#5c4033]/30 space-y-1.5">
-                            <div className="flex justify-between text-xs font-bold text-[#5c4033]">
+                        <div className="bg-white p-3 rounded-2xl border border-[#DCD1C0] space-y-1.5 shadow-2xs">
+                            <div className="flex justify-between text-xs font-bold text-[#5C493A]">
                                 <span>最低段位限制:</span>
-                                <span className="text-[#8B0000]">Lv.{minLevel} 级棋士</span>
+                                <span className="text-[#B93829] font-serif">Lv.{minLevel} 级棋士</span>
                             </div>
                             <input 
                                 type="range" 
@@ -256,23 +256,23 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
                                 max="20" 
                                 value={minLevel}
                                 onChange={(e) => setMinLevel(parseInt(e.target.value))}
-                                className="w-full accent-[#8B0000] cursor-pointer"
+                                className="w-full accent-[#B93829] cursor-pointer"
                             />
                         </div>
                     )}
 
                     <div>
-                        <label className="text-xs font-bold text-[#5c4033] block mb-1.5">对弈积分筹码</label>
+                        <label className="text-xs font-bold text-[#5C493A] block mb-1.5 font-serif">对弈积分筹码</label>
                         <div className="grid grid-cols-3 gap-2">
                             {[0, 30, 100].map((points) => (
                                 <button
                                     key={points}
                                     type="button"
                                     onClick={() => { soundManager.playClick(); setStakePoints(points); }}
-                                    className={`py-2 px-2 rounded-xl border text-center transition text-xs font-bold ${
+                                    className={`py-2 px-2 rounded-2xl border text-center transition text-xs font-bold cursor-pointer ${
                                         stakePoints === points
-                                            ? 'bg-[#8B0000] text-[#f0dbb0] border-[#8B0000] shadow'
-                                            : 'bg-[#fcf5e5] text-[#5c4033] border-[#5c4033]/40 hover:bg-[#e3c08d]'
+                                            ? 'bg-[#B93829] text-white border-[#B93829] shadow-2xs'
+                                            : 'bg-white text-[#5C493A] border-[#DCD1C0] hover:bg-stone-50 shadow-2xs'
                                     }`}
                                 >
                                     {points === 0 ? '友谊娱乐' : `${points} 积分`}
@@ -285,7 +285,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
                         <button 
                             onClick={handleCreatePvP}
                             disabled={isCreatingGame}
-                            className="w-full py-3 bg-[#8B0000] hover:bg-[#6b0000] text-[#f0dbb0] font-black rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                            className="w-full py-3 bg-[#B93829] hover:bg-[#A0281A] active:scale-95 text-white font-bold rounded-2xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                         >
                             <Swords className="w-5 h-5" />
                             <span>{isCreatingGame ? '正在开辟棋局...' : '生成对战邀请'}</span>
@@ -294,27 +294,27 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
                 </div>
             ) : (
                 <div className="space-y-4">
-                    <div className="bg-[#e3c08d] p-3 rounded-xl border border-[#5c4033]/30 text-center">
-                        <div className="text-xs text-[#5c4033] font-bold">房间号</div>
-                        <div className="text-xl font-black text-[#8B0000] tracking-wider mt-0.5">{createdGameId}</div>
+                    <div className="bg-white p-3 rounded-2xl border border-[#DCD1C0] text-center shadow-2xs">
+                        <div className="text-xs text-[#5C493A] font-bold">房间号</div>
+                        <div className="text-xl font-black text-[#B93829] font-mono tracking-wider mt-0.5">{createdGameId}</div>
                     </div>
 
-                    <div className="bg-[#fcf5e5] p-3 rounded-xl border border-[#5c4033]/40 break-all text-xs font-mono text-[#5c4033] select-all">
+                    <div className="bg-white p-3 rounded-2xl border border-[#DCD1C0] break-all text-xs font-mono text-[#2B231C] select-all shadow-2xs">
                         {inviteLink}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                         <button
                             onClick={handleCopy}
-                            className="py-2.5 px-3 bg-[#fcf5e5] hover:bg-[#e3c08d] text-[#5c4033] border border-[#5c4033] font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
+                            className="py-2.5 px-3 bg-white hover:bg-stone-50 text-[#5C493A] border border-[#DCD1C0] font-bold rounded-2xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                         >
-                            {copied ? <Check className="w-4 h-4 text-green-700" /> : <Copy className="w-4 h-4" />}
+                            {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                             <span>{copied ? '已复制链接' : '复制链接'}</span>
                         </button>
 
                         <button
                             onClick={handleShareInvite}
-                            className="py-2.5 px-3 bg-[#0088cc] hover:bg-[#0077b5] text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow"
+                            className="py-2.5 px-3 bg-[#2AABEE] hover:bg-[#229ED9] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
                         >
                             <Share2 className="w-4 h-4" />
                             <span>转发到群聊</span>
@@ -323,7 +323,7 @@ export const PvPSetupModal: React.FC<Props> = ({ isOpen, onClose, user, botAppUr
 
                     <button
                         onClick={handleStartWaiting}
-                        className="w-full py-3 bg-[#8B0000] hover:bg-[#6b0000] text-[#f0dbb0] font-black rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-[#B93829] hover:bg-[#A0281A] active:scale-95 text-white font-bold rounded-2xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
                     >
                         <span>进入房间等待对手</span>
                     </button>
