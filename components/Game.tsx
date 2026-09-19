@@ -37,7 +37,7 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
   const [statusMessage, setStatusMessage] = useState<string>('');
   
   // Game enhancements
-  const [aiDifficulty, setAiDifficulty] = useState<AIDifficulty>('master');
+  const [aiDifficulty, setAiDifficulty] = useState<AIDifficulty>('grandmaster');
   const [useCloudAi, setUseCloudAi] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
@@ -510,9 +510,19 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
           <div className="flex items-center gap-1.5 font-black text-sm tracking-wider">
             <span>{mode === 'pve' ? '人机博弈' : '楚河论剑 (PVP)'}</span>
             {mode === 'pve' && (
-              <span className="text-[10px] px-1.5 py-0.2 bg-[#8B0000] text-amber-200 rounded font-normal">
-                {aiDifficulty === 'beginner' ? '初级' : aiDifficulty === 'intermediate' ? '中级' : '特级大师'}
-              </span>
+              <button
+                onClick={() => {
+                  soundManager.playClick();
+                  const levels: AIDifficulty[] = ['beginner', 'intermediate', 'master', 'grandmaster'];
+                  const nextIdx = (levels.indexOf(aiDifficulty) + 1) % levels.length;
+                  setAiDifficulty(levels[nextIdx]);
+                }}
+                className="text-[10px] px-2 py-0.5 bg-[#8B0000] hover:bg-[#a10000] active:scale-95 transition text-amber-200 rounded-full font-bold shadow-xs border border-amber-300/30 flex items-center gap-1 cursor-pointer"
+                title="点击切换 AI 难度"
+              >
+                <span>{aiDifficulty === 'beginner' ? '新手' : aiDifficulty === 'intermediate' ? '高手' : aiDifficulty === 'master' ? '大师' : '特级大师'}</span>
+                <span className="text-[9px] opacity-70">⇄</span>
+              </button>
             )}
           </div>
           {currentOpening ? (
@@ -566,7 +576,11 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
                   将
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-xs">{mode === 'pve' ? '特级大师 AI' : '黑方对手'}</span>
+                  <span className="font-bold text-xs">
+                    {mode === 'pve' 
+                      ? (aiDifficulty === 'grandmaster' ? '特级大师 AI' : aiDifficulty === 'master' ? '象棋大师 AI' : aiDifficulty === 'intermediate' ? '业余高手 AI' : '棋坛新手 AI') 
+                      : '黑方对手'}
+                  </span>
                   <span className="text-[10px] opacity-75 font-mono">战力: {blackMaterial}</span>
                 </div>
               </div>

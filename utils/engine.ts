@@ -1,15 +1,16 @@
 import { BoardState, Color, Move, PieceType, ROWS, COLS } from '../types';
-import { getValidMoves, willBeChecked, PIECE_VALUES, isKingInDanger } from './gameLogic';
+import { getValidMoves, willBeChecked, PIECE_VALUES, isKingInDanger, isSquareAttacked } from './gameLogic';
 import { PIECE_CHARS } from '../constants';
 import { getBookMove, getBookSuggestions } from './openingBook';
 
-export type AIDifficulty = 'beginner' | 'intermediate' | 'master';
+export type AIDifficulty = 'beginner' | 'intermediate' | 'master' | 'grandmaster';
 
 // ================= 引擎深度与搜索配置 =================
 export const DEPTH_MAP: Record<AIDifficulty, number> = {
   beginner: 2,
   intermediate: 3,
-  master: 4,
+  master: 5,
+  grandmaster: 6,
 };
 
 const SUGGESTION_DEPTH = 3; 
@@ -195,31 +196,46 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
     let blackAdvisors = 0;
     let redElephants = 0;
     let blackElephants = 0;
+    let redMajors = 0; // 车马炮大子总数
+    let blackMajors = 0;
 
     let redKingPos = { x: 4, y: 9 };
     let blackKingPos = { x: 4, y: 0 };
 
-    // 第一遍扫描：基础分、PST与防守体系统计
+    const redHorses: { x: number, y: number }[] = [];
+    const blackHorses: { x: number, y: number }[] = [];
+    const redChariots: { x: number, y: number }[] = [];
+    const blackChariots: { x: number, y: number }[] = [];
+    const redCannons: { x: number, y: number }[] = [];
+    const blackCannons: { x: number, y: number }[] = [];
+
+    // 第一遍扫描：统计基础分、大子数量、位置矩阵
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
             const p = board[y][x];
             if (!p) continue;
             
             let val = PIECE_VALUES[p.type];
-            // 兵卒过河升值
-            if (p.type === PieceType.SOLDIER) {
-                const crossed = p.color === Color.RED ? y <= 4 : y >= 5;
-                if (crossed) {
-                    val = 220;
-                    // 逼近敌宫加成
-                    if (x >= 3 && x <= 5) val += 30;
-                    if (p.color === Color.RED && y <= 2) val += 60;
-                    if (p.color === Color.BLACK && y >= 7) val += 60;
-                }
+            const isRed = p.color === Color.RED;
+
+            if (p.type === PieceType.CHARIOT || p.type === PieceType.HORSE || p.type === PieceType.CANNON) {
+                if (isRed) redMajors++;
+                else blackMajors++;
+            }
+
+            if (p.type === PieceType.HORSE) {
+                if (isRed) redHorses.push({ x, y });
+                else blackHorses.push({ x, y });
+            } else if (p.type === PieceType.CHARIOT) {
+                if (isRed) redChariots.push({ x, y });
+                else blackChariots.push({ x, y });
+            } else if (p.type === PieceType.CANNON) {
+                if (isRed) redCannons.push({ x, y });
+                else blackCannons.push({ x, y });
             }
 
             // PST 偏移
-            const r = p.color === Color.RED ? y : (9 - y);
+            const r = isRed ? y : (9 - y);
             const c = x;
             let pstVal = 0;
             switch (p.type) {
@@ -230,14 +246,14 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
                 case PieceType.ADVISOR: pstVal = ADVISOR_PST[r][c]; break;
                 case PieceType.ELEPHANT: pstVal = ELEPHANT_PST[r][c]; break;
                 case PieceType.GENERAL:
-                    if (p.color === Color.RED) redKingPos = { x, y };
+                    if (isRed) redKingPos = { x, y };
                     else blackKingPos = { x, y };
                     if (c === 4) pstVal = 10;
                     break;
             }
 
             const totalPieceVal = val + pstVal;
-            if (p.color === Color.RED) {
+            if (isRed) {
                 redScore += totalPieceVal;
                 if (p.type === PieceType.ADVISOR) redAdvisors++;
                 if (p.type === PieceType.ELEPHANT) redElephants++;
@@ -249,7 +265,10 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
         }
     }
 
-    // 第二遍扫描：战术特性评估 (马腿通畅度、车通路控制、空头炮、挂角马)
+    // 残局阶段判断 (双方大子合计 <= 5 时进入残局，过河兵价值随逼近将门暴增)
+    const isEndgame = (redMajors + blackMajors) <= 5;
+
+    // 第二遍扫描：动态残局过河兵升值与深层战术特征
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
             const p = board[y][x];
@@ -258,7 +277,41 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
             const isRed = p.color === Color.RED;
             let tacticalBonus = 0;
 
-            if (p.type === PieceType.CHARIOT) {
+            if (p.type === PieceType.SOLDIER) {
+                const crossed = isRed ? y <= 4 : y >= 5;
+                if (crossed) {
+                    tacticalBonus += 120; // 基础过河红利
+                    // 逼近敌方九宫 (x: 3~5)
+                    if (x >= 3 && x <= 5) {
+                        tacticalBonus += 35;
+                    }
+                    // 深入敌腹
+                    if (isRed) {
+                        if (y <= 2) tacticalBonus += 60;
+                        if (y <= 1 && x >= 3 && x <= 5) tacticalBonus += 80;
+                    } else {
+                        if (y >= 7) tacticalBonus += 60;
+                        if (y >= 8 && x >= 3 && x <= 5) tacticalBonus += 80;
+                    }
+                    // 残局"卒子顶大车"价值暴增机制
+                    if (isEndgame) {
+                        const distToPalace = isRed ? y : (9 - y);
+                        if (distToPalace <= 3) {
+                            tacticalBonus += (4 - distToPalace) * 70; // 越贴近底线，价值直逼马炮
+                        }
+                    }
+                }
+            }
+            else if (p.type === PieceType.CHARIOT) {
+                // 巡河车控制 (红车y=5, 黑车y=4)
+                if ((isRed && y === 5) || (!isRed && y === 4)) {
+                    tacticalBonus += 25;
+                }
+                // 下二道锁将 (红车控y=1, 黑车控y=8)
+                if ((isRed && y === 1) || (!isRed && y === 8)) {
+                    tacticalBonus += 40;
+                }
+
                 // 车占通头路/半通头路检查
                 let hasFriendlyPawn = false;
                 let hasEnemyPawn = false;
@@ -269,17 +322,17 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
                         else hasEnemyPawn = true;
                     }
                 }
-                if (!hasFriendlyPawn && !hasEnemyPawn) tacticalBonus += 30; // 全通畅通大道
+                if (!hasFriendlyPawn && !hasEnemyPawn) tacticalBonus += 30; // 全通畅大道
                 else if (!hasFriendlyPawn) tacticalBonus += 18; // 半通畅要道
             } 
             else if (p.type === PieceType.HORSE) {
-                // 马腿检测 (别马腿严重制约)
+                // 别马腿检测 (别马腿严重制约自由度)
                 let freeLegs = 0;
                 const horseDirs = [
-                    { leg: [0, -1], jumps: [[-1, -2], [1, -2]] },
-                    { leg: [0, 1], jumps: [[-1, 2], [1, 2]] },
-                    { leg: [-1, 0], jumps: [[-2, -1], [-2, 1]] },
-                    { leg: [1, 0], jumps: [[2, -1], [2, 1]] }
+                    { leg: [0, -1] },
+                    { leg: [0, 1] },
+                    { leg: [-1, 0] },
+                    { leg: [1, 0] }
                 ];
                 for (const d of horseDirs) {
                     const lx = x + d.leg[0];
@@ -289,21 +342,25 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
                     }
                 }
                 tacticalBonus += freeLegs * 4;
-                if (freeLegs <= 2) tacticalBonus -= 30; // 蹩脚死马
+                if (freeLegs <= 2) tacticalBonus -= 35; // 蹩脚死马重罚
                 
-                // 卧槽马与挂角马
+                // 卧槽马与挂角马 (象棋致命攻击阵型)
                 if (isRed) {
-                    if (y === 1 && (x === 2 || x === 6)) tacticalBonus += 60; // 卧槽马
-                    if (y === 2 && (x === 3 || x === 5)) tacticalBonus += 50; // 挂角马
+                    if (y === 1 && (x === 2 || x === 6)) tacticalBonus += 65; // 卧槽马
+                    if (y === 2 && (x === 3 || x === 5)) tacticalBonus += 55; // 挂角马
                 } else {
-                    if (y === 8 && (x === 2 || x === 6)) tacticalBonus += 60;
-                    if (y === 7 && (x === 3 || x === 5)) tacticalBonus += 50;
+                    if (y === 8 && (x === 2 || x === 6)) tacticalBonus += 65;
+                    if (y === 7 && (x === 3 || x === 5)) tacticalBonus += 55;
                 }
             } 
             else if (p.type === PieceType.CANNON) {
                 // 镇中路当头炮
                 if (x === 4) {
                     tacticalBonus += 35;
+                }
+                // 沉底炮 (红炮 y=0, 黑炮 y=9)
+                if ((isRed && y === 0) || (!isRed && y === 9)) {
+                    tacticalBonus += 30;
                 }
                 // 检测对准敌方老将的空头炮或沉底炮 (直逼将门)
                 const enemyKing = isRed ? blackKingPos : redKingPos;
@@ -315,9 +372,9 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
                         if (board[cy][x]) screenCount++;
                     }
                     if (screenCount === 0) {
-                        tacticalBonus += 240; // 致命空头炮，将门完全敞开！
+                        tacticalBonus += 260; // 致命空头炮，将门完全敞开！
                     } else if (screenCount === 1) {
-                        tacticalBonus += 45; // 隔单子借炮瞄将
+                        tacticalBonus += 50; // 隔单子瞄将
                     }
                 }
             }
@@ -327,17 +384,87 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
         }
     }
 
-    // 士象全与残象破阵评估
+    // 第三部分：大师子力协同与杀法组合拳
+    // 1. 连环马 (相互防守)
+    if (redHorses.length === 2) {
+        const h1 = redHorses[0];
+        const h2 = redHorses[1];
+        const dx = Math.abs(h1.x - h2.x);
+        const dy = Math.abs(h1.y - h2.y);
+        if ((dx === 1 && dy === 2) || (dx === 2 && dy === 1)) {
+            redScore += 40; // 红方连环马，固若金汤
+        }
+    }
+    if (blackHorses.length === 2) {
+        const h1 = blackHorses[0];
+        const h2 = blackHorses[1];
+        const dx = Math.abs(h1.x - h2.x);
+        const dy = Math.abs(h1.y - h2.y);
+        if ((dx === 1 && dy === 2) || (dx === 2 && dy === 1)) {
+            blackScore += 40; // 黑方连环马
+        }
+    }
+
+    // 2. 双车错 (双车深入敌方底线两路)
+    if (redChariots.length === 2) {
+        const inEnemyTerritory = redChariots.filter(c => c.y <= 2).length;
+        if (inEnemyTerritory === 2) redScore += 150; // 双车错杀势
+    }
+    if (blackChariots.length === 2) {
+        const inEnemyTerritory = blackChariots.filter(c => c.y >= 7).length;
+        if (inEnemyTerritory === 2) blackScore += 150;
+    }
+
+    // 3. 马后炮战术协同 (炮在己方马身后瞄准敌宫)
+    for (const h of redHorses) {
+        if (h.y <= 3) {
+            for (const c of redCannons) {
+                if (c.x === h.x && c.y > h.y && c.y <= 5) {
+                    redScore += 110; // 红方马后炮成型
+                }
+            }
+        }
+    }
+    for (const h of blackHorses) {
+        if (h.y >= 6) {
+            for (const c of blackCannons) {
+                if (c.x === h.x && c.y < h.y && c.y >= 4) {
+                    blackScore += 110; // 黑方马后炮成型
+                }
+            }
+        }
+    }
+
+    // 4. 防守体系健全度与破阵危机
+    // 士象全
     if (redAdvisors === 2 && redElephants === 2) redScore += 50;
     if (blackAdvisors === 2 && blackElephants === 2) blackScore += 50;
-    if (redAdvisors === 0) redScore -= 100; // 破双士，极危
-    if (blackAdvisors === 0) blackScore -= 100;
-    if (redElephants === 0) redScore -= 70; // 破双相，怕炮
-    if (blackElephants === 0) blackScore -= 70;
+
+    // 缺象怕炮，缺士怕车马
+    if (redAdvisors === 0) {
+        redScore -= 100;
+        if (blackChariots.length > 0 || blackHorses.length > 0) redScore -= 50;
+    }
+    if (blackAdvisors === 0) {
+        blackScore -= 100;
+        if (redChariots.length > 0 || redHorses.length > 0) blackScore -= 50;
+    }
+    if (redElephants === 0) {
+        redScore -= 70;
+        if (blackCannons.length > 0) redScore -= 40;
+    }
+    if (blackElephants === 0) {
+        blackScore -= 70;
+        if (redCannons.length > 0) blackScore -= 40;
+    }
+
+    // 老将偏居九宫边缘且无士护卫
+    if (redKingPos.x !== 4 && redAdvisors <= 1) redScore -= 50;
+    if (blackKingPos.x !== 4 && blackAdvisors <= 1) blackScore -= 50;
 
     // 将军状态评估
-    if (isKingInDanger(board, Color.RED)) redScore -= 70;
-    if (isKingInDanger(board, Color.BLACK)) blackScore -= 70;
+    if (isKingInDanger(board, Color.RED)) redScore -= 75;
+    if (isKingInDanger(board, Color.BLACK)) blackScore -= 75;
 
     const turnBonus = 12;
     return turn === Color.RED 
@@ -345,7 +472,7 @@ export const evaluateBoard = (board: BoardState, turn: Color): number => {
         : (blackScore - redScore + turnBonus);
 };
 
-// ================= 走法生成与启发式排序 (MVV-LVA + Killers + History) =================
+// ================= 走法生成与启发式排序 (MVV-LVA + Checks + Killers + History) =================
 interface ScoredMove {
     move: Move;
     score: number;
@@ -353,6 +480,7 @@ interface ScoredMove {
 
 const getAllLegalMoves = (board: BoardState, color: Color, ttMove?: Move, ply: number = 0): ScoredMove[] => {
     const moves: ScoredMove[] = [];
+    const enemyColor = color === Color.RED ? Color.BLACK : Color.RED;
 
     for (let y = 0; y < ROWS; y++) {
         for (let x = 0; x < COLS; x++) {
@@ -364,27 +492,47 @@ const getAllLegalMoves = (board: BoardState, color: Color, ttMove?: Move, ply: n
                         const target = board[to.y][to.x];
                         let sortScore = 0;
 
-                        // 1. TT 最佳着法 (置换表置顶)
+                        // 1. TT 最佳着法 (置换表顶格命中)
                         if (ttMove && ttMove.from.x === x && ttMove.from.y === y && ttMove.to.x === to.x && ttMove.to.y === to.y) {
                             sortScore += 1000000;
-                        } 
-                        // 2. MVV-LVA 吃子排序 (高价值被吃，低价值攻吃)
-                        else if (target) {
-                            sortScore += 50000 + PIECE_VALUES[target.type] * 10 - PIECE_VALUES[p.type];
-                        } 
-                        // 3. 杀手着法 (Killer Heuristic)
-                        else if (ply < MAX_PLY) {
-                            const k1 = killerMoves[ply][0];
-                            const k2 = killerMoves[ply][1];
-                            if (k1 && k1.from.x === x && k1.from.y === y && k1.to.x === to.x && k1.to.y === to.y) {
-                                sortScore += 9000;
-                            } else if (k2 && k2.from.x === x && k2.from.y === y && k2.to.x === to.x && k2.to.y === to.y) {
-                                sortScore += 8000;
-                            }
-                        }
+                        } else {
+                            // 模拟走棋检查照将与受保护状态 (静态交换评估 SEE 预筛)
+                            board[to.y][to.x] = p;
+                            board[y][x] = null;
+                            const givesCheck = isKingInDanger(board, enemyColor);
+                            const isProtected = target ? isSquareAttacked(board, to.x, to.y, enemyColor) : false;
+                            board[y][x] = p;
+                            board[to.y][to.x] = target;
 
-                        // 4. 历史启发表累加
-                        sortScore += Math.min(historyTable[y][x][to.y][to.x], 6000);
+                            // 2. 将军战术迫着 (逼迫敌方应对，极易促成极深剪枝)
+                            if (givesCheck) {
+                                sortScore += 45000;
+                            }
+
+                            // 3. 吃子排序 (MVV-LVA)
+                            if (target) {
+                                if (isProtected && PIECE_VALUES[p.type] > PIECE_VALUES[target.type] + 80) {
+                                    // 冒进送吃着法 (如大车吃有保护的兵卒)，降低排序优先级，防止污染分支
+                                    sortScore += 12000 + PIECE_VALUES[target.type] - PIECE_VALUES[p.type];
+                                } else {
+                                    // 优势吃子或等价兑子
+                                    sortScore += 50000 + PIECE_VALUES[target.type] * 10 - PIECE_VALUES[p.type];
+                                }
+                            } 
+                            // 4. 杀手着法 (Killer Heuristic)
+                            else if (ply < MAX_PLY) {
+                                const k1 = killerMoves[ply][0];
+                                const k2 = killerMoves[ply][1];
+                                if (k1 && k1.from.x === x && k1.from.y === y && k1.to.x === to.x && k1.to.y === to.y) {
+                                    sortScore += 9000;
+                                } else if (k2 && k2.from.x === x && k2.from.y === y && k2.to.x === to.x && k2.to.y === to.y) {
+                                    sortScore += 8000;
+                                }
+                            }
+
+                            // 5. 历史启发表累加
+                            sortScore += Math.min(historyTable[y][x][to.y][to.x], 7000);
+                        }
 
                         moves.push({ move: { from: { x, y }, to }, score: sortScore });
                     }
@@ -461,7 +609,7 @@ const quiescenceSearch = (board: BoardState, alpha: number, beta: number, turn: 
     return alpha;
 };
 
-// ================= 主 Alpha-Beta 搜索 (支持空步剪枝与杀手更新) =================
+// ================= 主 Alpha-Beta 搜索 (支持 PVS、LMR 与杀手启发) =================
 const alphaBeta = (
     board: BoardState, 
     depth: number, 
@@ -480,8 +628,8 @@ const alphaBeta = (
     }
 
     const inCheck = isKingInDanger(board, turn);
-    if (inCheck && ply < 4) {
-        depth++; // 将军延伸 (仅在前4层延伸，防止深层爆炸)
+    if (inCheck && ply < 6) {
+        depth++; // 将军延伸 (使杀局与解杀计算更深远)
     }
 
     if (depth <= 0) {
@@ -505,15 +653,37 @@ const alphaBeta = (
 
     let flag: 0 | 1 | 2 = 2; // 默认 UPPERBOUND
     let bestMove: Move | undefined = undefined;
+    let bSearchPv = true;
 
-    for (const { move } of moves) {
+    for (let i = 0; i < moves.length; i++) {
+        const { move } = moves[i];
         const fromP = board[move.from.y][move.from.x];
         const toP = board[move.to.y][move.to.x];
         board[move.to.y][move.to.x] = fromP;
         board[move.from.y][move.from.x] = null;
         
         const nextTurn = turn === Color.RED ? Color.BLACK : Color.RED;
-        const val = -alphaBeta(board, depth - 1, -beta, -alpha, nextTurn, ply + 1, true);
+        let val: number;
+
+        if (bSearchPv) {
+            // 主变分支 (PV Move): 全窗口搜索
+            val = -alphaBeta(board, depth - 1, -beta, -alpha, nextTurn, ply + 1, true);
+        } else {
+            // 非主要变例：Late Move Reduction (LMR) 静步深度削减
+            let reduction = 0;
+            if (depth >= 3 && i >= 4 && !inCheck && !toP && ply < MAX_PLY) {
+                reduction = 1;
+                if (depth >= 5 && i >= 8) reduction = 2;
+            }
+
+            // 零窗口试探侦测 (Null-Window Scout Search)
+            val = -alphaBeta(board, depth - 1 - reduction, -alpha - 1, -alpha, nextTurn, ply + 1, true);
+
+            // 若试探失败并超越 alpha，以全窗口重新深搜
+            if (val > alpha && (reduction > 0 || val < beta)) {
+                val = -alphaBeta(board, depth - 1, -beta, -alpha, nextTurn, ply + 1, true);
+            }
+        }
         
         board[move.from.y][move.from.x] = fromP;
         board[move.to.y][move.to.x] = toP;
@@ -530,6 +700,7 @@ const alphaBeta = (
         }
         if (val > alpha) {
             alpha = val;
+            bSearchPv = false;
             flag = 0; // EXACT
             bestMove = move;
         }
@@ -675,7 +846,7 @@ export const getTopMoves = (board: BoardState, turn: Color, limit: number = 3): 
     return candidates.sort((a, b) => b.score - a.score).slice(0, limit);
 };
 
-// ================= API: PVE 最佳着法 (特级大师迭代加深搜索) =================
+// ================= API: PVE 最佳着法 (特级大师迭代加深与动态抱负窗口搜索) =================
 export const searchBestMove = (board: BoardState, turn: Color, difficulty: AIDifficulty = 'master'): Move | null => {
     // 1. 查阅大师开局库 (菜鸟模式不查或小概率查，中高难度必查)
     if (difficulty !== 'beginner' || Math.random() < 0.5) {
@@ -691,9 +862,10 @@ export const searchBestMove = (board: BoardState, turn: Color, difficulty: AIDif
     cleanTT();
     resetSearchTables();
     
-    const maxDepth = DEPTH_MAP[difficulty] || 4;
+    const maxDepth = DEPTH_MAP[difficulty] || 5;
     const tempBoard = board.map(row => row.map(p => p ? {...p} : null));
     let overallBestMove: Move | null = null;
+    let overallBestScore = -INFINITY;
 
     const rootMoves = getAllLegalMoves(tempBoard, turn);
     if (rootMoves.length === 0) return null;
@@ -706,47 +878,87 @@ export const searchBestMove = (board: BoardState, turn: Color, difficulty: AIDif
 
     // 迭代加深搜索 (Iterative Deepening Search with Time Budget)
     const startTime = Date.now();
-    const timeLimitMs = difficulty === 'master' ? 1200 : (difficulty === 'intermediate' ? 600 : 300);
+    const timeLimitMs = difficulty === 'grandmaster' ? 2200 
+                      : (difficulty === 'master' ? 1400 
+                      : (difficulty === 'intermediate' ? 600 : 300));
 
     for (let depth = 2; depth <= maxDepth; depth++) {
         let currentBestScore = -INFINITY;
         let currentBestMove: Move | null = null;
+
+        // 抱负窗口 (Aspiration Windows): 利用浅层估值缩小搜索窗口以倍增修剪效率
         let alpha = -INFINITY;
         let beta = INFINITY;
+        if (depth >= 4 && overallBestScore > -MATE_SCORE + 1000 && overallBestScore < MATE_SCORE - 1000) {
+            alpha = overallBestScore - 60;
+            beta = overallBestScore + 60;
+        }
 
         const hash = computeHash(tempBoard, turn);
         const ttEntry = TT.get(hash);
-        const sortedMoves = getAllLegalMoves(tempBoard, turn, ttEntry?.bestMove, 0);
+        const sortedMoves = getAllLegalMoves(tempBoard, turn, overallBestMove || ttEntry?.bestMove, 0);
 
-        for (const { move } of sortedMoves) {
-            // 超时检查
-            if (Date.now() - startTime > timeLimitMs && overallBestMove !== null) {
-                return overallBestMove;
+        let searchSuccess = false;
+        let retryCount = 0;
+
+        while (!searchSuccess && retryCount < 2) {
+            currentBestScore = -INFINITY;
+            currentBestMove = null;
+
+            for (let i = 0; i < sortedMoves.length; i++) {
+                const { move } = sortedMoves[i];
+                // 超时检查
+                if (Date.now() - startTime > timeLimitMs && overallBestMove !== null) {
+                    return overallBestMove;
+                }
+
+                const fromP = tempBoard[move.from.y][move.from.x];
+                const toP = tempBoard[move.to.y][move.to.x];
+                tempBoard[move.to.y][move.to.x] = fromP;
+                tempBoard[move.from.y][move.from.x] = null;
+
+                const nextTurn = turn === Color.RED ? Color.BLACK : Color.RED;
+                let val: number;
+
+                if (i === 0) {
+                    val = -alphaBeta(tempBoard, depth - 1, -beta, -alpha, nextTurn, 1);
+                } else {
+                    val = -alphaBeta(tempBoard, depth - 1, -alpha - 1, -alpha, nextTurn, 1);
+                    if (val > alpha && val < beta) {
+                        val = -alphaBeta(tempBoard, depth - 1, -beta, -alpha, nextTurn, 1);
+                    }
+                }
+
+                tempBoard[move.from.y][move.from.x] = fromP;
+                tempBoard[move.to.y][move.to.x] = toP;
+
+                if (val > currentBestScore) {
+                    currentBestScore = val;
+                    currentBestMove = move;
+                }
+                if (val > alpha) alpha = val;
             }
 
-            const fromP = tempBoard[move.from.y][move.from.x];
-            const toP = tempBoard[move.to.y][move.to.x];
-            tempBoard[move.to.y][move.to.x] = fromP;
-            tempBoard[move.from.y][move.from.x] = null;
-
-            const nextTurn = turn === Color.RED ? Color.BLACK : Color.RED;
-            const val = -alphaBeta(tempBoard, depth - 1, -beta, -alpha, nextTurn, 1);
-
-            tempBoard[move.from.y][move.from.x] = fromP;
-            tempBoard[move.to.y][move.to.x] = toP;
-
-            if (val > currentBestScore) {
-                currentBestScore = val;
-                currentBestMove = move;
+            // 检查抱负窗口是否失败
+            if (currentBestScore <= alpha && alpha !== -INFINITY) {
+                // Fail-low: 估值暴跌，放大向下窗口重搜
+                alpha = -INFINITY;
+                retryCount++;
+            } else if (currentBestScore >= beta && beta !== INFINITY) {
+                // Fail-high: 估值暴涨，放大向上窗口重搜
+                beta = INFINITY;
+                retryCount++;
+            } else {
+                searchSuccess = true;
             }
-            if (val > alpha) alpha = val;
         }
 
         if (currentBestMove) {
             overallBestMove = currentBestMove;
+            overallBestScore = currentBestScore;
         }
 
-        // 如果已经找到必胜将死或即将超时，直接返回
+        // 如果已经找到必胜将死或已过时限，直接破层退出
         if (currentBestScore >= MATE_SCORE - 100 || Date.now() - startTime > timeLimitMs) {
             break;
         }
