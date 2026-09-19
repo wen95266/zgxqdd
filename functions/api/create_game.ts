@@ -17,9 +17,29 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const game_id = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
     const now = Date.now();
 
-    await context.env.DB.prepare(
-      "INSERT INTO games (id, creator_id, min_level, status, created_at) VALUES (?, ?, ?, ?, ?)"
-    ).bind(game_id, telegram_id, min_level || 0, 'waiting', now).run();
+    try {
+      await context.env.DB.prepare(
+        "INSERT INTO games (id, creator_id, min_level, status, created_at) VALUES (?, ?, ?, ?, ?)"
+      ).bind(game_id, telegram_id, min_level || 0, 'waiting', now).run();
+    } catch (dbErr: any) {
+      if (String(dbErr.message || dbErr).includes("no such table")) {
+        await context.env.DB.exec(`
+          CREATE TABLE IF NOT EXISTS games (
+            id TEXT PRIMARY KEY,
+            creator_id TEXT,
+            opponent_id TEXT,
+            min_level INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'waiting',
+            created_at INTEGER
+          );
+        `);
+        await context.env.DB.prepare(
+          "INSERT INTO games (id, creator_id, min_level, status, created_at) VALUES (?, ?, ?, ?, ?)"
+        ).bind(game_id, telegram_id, min_level || 0, 'waiting', now).run();
+      } else {
+        throw dbErr;
+      }
+    }
 
     return new Response(JSON.stringify({ success: true, game_id }), {
       headers: { "Content-Type": "application/json" }

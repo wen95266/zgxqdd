@@ -7,7 +7,7 @@ interface Env {
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
-    const { telegram_id, result } = await context.request.json() as { telegram_id: string, result: 'win' | 'loss' };
+    const { telegram_id, result } = await context.request.json() as { telegram_id: string, result: 'win' | 'loss' | 'draw' };
 
     if (!telegram_id || !result) {
       return new Response(JSON.stringify({ error: "Missing parameters" }), { status: 400 });
@@ -25,6 +25,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       // Win: +30 reward - 5 fee = +25
       change = 25;
       message = "胜利！获得 30 积分 (扣除 5 积分房费)";
+    } else if (result === 'draw') {
+      // Draw: +5 encouragement
+      change = 5;
+      message = "握手言和！获得 5 积分";
     } else {
       // Lose: -30
       change = -30;

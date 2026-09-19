@@ -80,11 +80,32 @@ const App: React.FC = () => {
     setView(mode);
   };
 
-  const handleBackToLobby = () => {
+  const handleBackToLobby = useCallback(() => {
     setView('lobby');
     setInitialGameId(null);
     fetchUser();
-  };
+  }, [fetchUser]);
+
+  // Support native Telegram WebApp BackButton
+  useEffect(() => {
+    if (view === 'pve' || view === 'pvp') {
+      try {
+        WebApp?.BackButton?.show?.();
+        WebApp?.BackButton?.onClick?.(handleBackToLobby);
+      } catch (_) {}
+
+      return () => {
+        try {
+          WebApp?.BackButton?.offClick?.(handleBackToLobby);
+          WebApp?.BackButton?.hide?.();
+        } catch (_) {}
+      };
+    } else {
+      try {
+        WebApp?.BackButton?.hide?.();
+      } catch (_) {}
+    }
+  }, [view, WebApp, handleBackToLobby]);
 
   return (
     <div className="w-full min-h-screen serene-bg text-[#2D2721] flex flex-col items-center">

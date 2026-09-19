@@ -449,6 +449,10 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
           const aiResult = await getAiMove(board, Color.BLACK, aiDifficulty, useCloudAi);
           if (aiResult && aiResult.move) {
             executeMove(aiResult.move);
+            if (aiResult.reasoning && aiResult.reasoning !== "弈算引擎推演") {
+              setStatusMessage(`AI: ${aiResult.reasoning}`);
+              setTimeout(() => setStatusMessage(""), 4000);
+            }
           } else {
             handleGameEnd(Color.RED, "AI 困毙认输");
           }
@@ -759,25 +763,40 @@ export const Game: React.FC<Props> = ({ mode, onBack, invitedGameId, user, onUpd
 
       {/* AI Difficulty Selector Segmented Bar (PVE mode) */}
       {mode === 'pve' && !winner && (
-        <div className="w-full max-w-[480px] px-3 pt-2.5 flex items-center justify-between text-xs text-[#5C493A]">
+        <div className="w-full max-w-[480px] px-3 pt-2.5 flex items-center justify-between text-xs text-[#5C493A] gap-2">
           <div className="flex items-center gap-1 font-bold">
             <Brain className="w-3.5 h-3.5 text-[#B93829]" />
             <span>AI段位:</span>
           </div>
-          <div className="flex gap-1 bg-white/70 p-0.5 rounded-xl border border-[#DCD1C0]">
-            {(['beginner', 'intermediate', 'master', 'grandmaster'] as AIDifficulty[]).map(diff => (
-              <button
-                key={diff}
-                onClick={() => { soundManager.playClick(); setAiDifficulty(diff); }}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                  aiDifficulty === diff
-                    ? 'bg-[#B93829] text-white shadow-2xs'
-                    : 'text-[#5C493A] hover:bg-white/80'
-                }`}
-              >
-                {diff === 'beginner' ? '新手' : diff === 'intermediate' ? '高手' : diff === 'master' ? '大师' : '特级大师'}
-              </button>
-            ))}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            <div className="flex gap-1 bg-white/70 p-0.5 rounded-xl border border-[#DCD1C0]">
+              {(['beginner', 'intermediate', 'master', 'grandmaster'] as AIDifficulty[]).map(diff => (
+                <button
+                  key={diff}
+                  onClick={() => { soundManager.playClick(); setAiDifficulty(diff); }}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                    aiDifficulty === diff
+                      ? 'bg-[#B93829] text-white shadow-2xs'
+                      : 'text-[#5C493A] hover:bg-white/80'
+                  }`}
+                >
+                  {diff === 'beginner' ? '新手' : diff === 'intermediate' ? '高手' : diff === 'master' ? '大师' : '特级大师'}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => { soundManager.playClick(); setUseCloudAi(!useCloudAi); }}
+              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all border flex items-center gap-1 cursor-pointer ${
+                useCloudAi 
+                  ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white border-amber-600 shadow-2xs' 
+                  : 'bg-white/80 text-[#5C493A] border-[#DCD1C0] hover:bg-white shadow-2xs'
+              }`}
+              title="切换是否优先调用云端 Gemini 进行深度推理"
+            >
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              <span>Gemini {useCloudAi ? '云端' : '本地'}</span>
+            </button>
           </div>
         </div>
       )}

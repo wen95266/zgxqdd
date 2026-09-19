@@ -9,7 +9,7 @@ interface Env {
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const { prompt } = await context.request.json() as { prompt: string };
-    const apiKey = context.env.API_KEY;
+    const apiKey = context.env?.API_KEY || (typeof process !== 'undefined' ? (process.env?.GEMINI_API_KEY || process.env?.API_KEY) : '');
 
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "Gemini API Key not configured." }), { status: 500 });
@@ -17,9 +17,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     const ai = new GoogleGenAI({ apiKey });
 
-    // 使用 Gemini 3 Pro 以获得顶级的逻辑推理能力
+    // 使用官方标准的 gemini-3.8-flash 获得敏捷极速的棋力推理
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', 
+      model: 'gemini-3.8-flash', 
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -30,12 +30,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             reasoning: { type: Type.STRING }
           },
           required: ["bestMoveIndex"]
-        },
-        // 核心配置：开启 16384 token 的思维链预算
-        // 这允许模型在输出结果前进行深度博弈搜索
-        thinkingConfig: { 
-          thinkingBudget: 16384 
-        } 
+        }
       }
     });
 
